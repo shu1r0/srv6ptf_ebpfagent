@@ -1,0 +1,7 @@
+{
+  "files.associations": {
+    "seg6.h": "c",
+    "ipv6.h": "c"
+  },
+  "C_Cpp.errorSquiggles": "Disabled"
+}
