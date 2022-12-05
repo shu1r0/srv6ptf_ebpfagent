@@ -29,14 +29,14 @@ enum EBPFHook {
  * metadata for Netfilter
  */
 message NetFilterInfo {
-  EBPFHook hookpoint = 1;
+  string hookpoint = 1;
 }
 
 /**
  * metadata for eBPF
  */
 message EBPFInfo {
-  string hookpoint = 1;
+  EBPFHook hookpoint = 1;
 }
 
 

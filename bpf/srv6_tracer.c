@@ -32,7 +32,7 @@ struct sr6_pktid_tlv {
 };
 
 /**
- * @brief create new pktid tlv struct   
+ * @brief create new pktid tlv struct 
  * 
  * @param nodeid 
  * @param counter 
@@ -217,7 +217,6 @@ static __always_inline bool update_pkt_len(struct ipv6hdr *ipv6, struct ipv6_sr_
  */
 static __always_inline bool push_pktidtlv_xdp(struct xdp_md *ctx, int nodeid, int counter){
   struct sr6_pktid_tlv pktid_tlv = new_pktid_tlv(nodeid, counter);
-  bpf_debug("pktid addr=%u", pktid_tlv);
 
   // change packet size
   if (bpf_xdp_adjust_head(ctx, 0 - (int)sizeof(pktid_tlv)) != 0){
@@ -285,7 +284,7 @@ static __always_inline bool push_pktidtlv_xdp(struct xdp_md *ctx, int nodeid, in
   // chage length fields
   if (update_pkt_len(new_ipv6, new_srh, sizeof(*new_pktid_tlv))){
     bpf_debug("tmp_pktid_len=%u", pktid_tlv.len);
-    bpf_debug("new_pktid_len=%u", new_pktid_tlv.len);
+    bpf_debug("new_pktid_len=%u", new_pktid_tlv->len);
     return true;
   }
 
@@ -408,13 +407,14 @@ SEC("xdp") int ingress(struct xdp_md *ctx)
     return XDP_PASS;
   }
   bpf_trace("Ingress: Get SRv6 Packet.");
-  perf_event(ctx, packet_size, 1, 0);
+  // perf_event(ctx, packet_size, 1, 1);
 
   struct sr6_pktid_tlv *tlv = get_pktidtlv(srh, data, data_end);
   if(tlv){
     bpf_trace("Ingress: PktId TLV Packet");
+    // Perf Event
     unsigned long pktid = (nodeidtoi(tlv->node_id) << sizeof(tlv->counter)) | countertoi(tlv->counter);
-    perf_event(ctx, packet_size, pktid, 0);
+    perf_event(ctx, packet_size, pktid, 1);
   }else {
     // PKTID 付与
     __u32 *node_id = bpf_map_lookup_elem(&config_map, &node_id_index);
@@ -432,7 +432,9 @@ SEC("xdp") int ingress(struct xdp_md *ctx)
 
     if(push_pktidtlv_xdp(ctx, *node_id, *count)){
       (*count)++;
-      perf_event(ctx, packet_size, 1, 0);
+      // Perf Event
+      unsigned long pktid = (*node_id << PKTID_TLV_COUNTER_LEN) | *count;
+      perf_event(ctx, packet_size, pktid, 2);
     }else{
       bpf_warning("Ingress: Adding PktId TLV Error.");
       return XDP_PASS;
@@ -466,8 +468,6 @@ SEC("tc") int egress(struct __sk_buff *skb)
   struct sr6_pktid_tlv *tlv = get_pktidtlv(srh, data, data_end);
   if(tlv){
     bpf_trace("Egress: PktId TLV Packet.");
-    unsigned long pktid = (nodeidtoi(tlv->node_id) << sizeof(tlv->counter)) | countertoi(tlv->counter);
-    perf_event(skb, packet_size, pktid, 0);
   }else {
     // PKTID 付与
     __u32 *node_id = bpf_map_lookup_elem(&config_map, &node_id_index);
@@ -485,6 +485,9 @@ SEC("tc") int egress(struct __sk_buff *skb)
     int tlv_off = (void*)(srh + sizeof(*srh)) - data;
     if(push_pktidtlv_skb(skb, tlv_off, *node_id, *counter)){
       (*counter)++;
+      // Perf Event
+      unsigned long pktid = (*node_id << PKTID_TLV_COUNTER_LEN) | *counter;
+      perf_event(skb, packet_size, pktid, 4);
     }else{
       bpf_warning("Egress: Adding PktId TLV Error.");
       return TC_ACT_OK;

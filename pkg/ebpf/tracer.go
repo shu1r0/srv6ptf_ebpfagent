@@ -18,16 +18,16 @@ type PerfEventItem struct {
 	Hookpoint          uint8
 }
 
-type TelemetryDataPlane struct {
-	telemetryObjects
+type TracingDataPlane struct {
+	tracerObjects
 	InIfaces []string
 	EIfaces  []string
 	Efilters []*netlink.BpfFilter
 	Eqdiscs  []*netlink.GenericQdisc
 }
 
-func NewTelemetryDataPlane(options *ebpf.CollectionOptions) (*TelemetryDataPlane, error) {
-	dp := &TelemetryDataPlane{}
+func NewTracingDataPlane(options *ebpf.CollectionOptions) (*TracingDataPlane, error) {
+	dp := &TracingDataPlane{}
 
 	spec, err := loadTelemetry()
 	if err != nil {
@@ -41,7 +41,7 @@ func NewTelemetryDataPlane(options *ebpf.CollectionOptions) (*TelemetryDataPlane
 	return dp, nil
 }
 
-func (obj *TelemetryDataPlane) AttachAll() error {
+func (obj *TracingDataPlane) AttachAll() error {
 	links, err := netlink.LinkList()
 	if err != nil {
 		return err
@@ -59,7 +59,7 @@ func (obj *TelemetryDataPlane) AttachAll() error {
 	return nil
 }
 
-func (obj *TelemetryDataPlane) DettachAll() {
+func (obj *TracingDataPlane) DettachAll() {
 	if err := obj.DettachIngresses(); err != nil {
 		panic(err)
 	}
@@ -68,13 +68,13 @@ func (obj *TelemetryDataPlane) DettachAll() {
 	}
 }
 
-func (obj *TelemetryDataPlane) AttachIngress(iface string) error {
+func (obj *TracingDataPlane) AttachIngress(iface string) error {
 	link, err := netlink.LinkByName(iface)
 	if err != nil {
 		return fmt.Errorf("Attack Ingress Error: %s", err)
 	}
 
-	if err := netlink.LinkSetXdpFd(link, obj.telemetryPrograms.Ingress.FD()); err != nil {
+	if err := netlink.LinkSetXdpFd(link, obj.tracerPrograms.Ingress.FD()); err != nil {
 		return err
 	}
 
@@ -83,7 +83,7 @@ func (obj *TelemetryDataPlane) AttachIngress(iface string) error {
 	return nil
 }
 
-func (obj *TelemetryDataPlane) DettachIngresses() error {
+func (obj *TracingDataPlane) DettachIngresses() error {
 	for _, iface := range obj.InIfaces {
 		link, err := netlink.LinkByName(iface)
 		if err != nil {
@@ -98,7 +98,7 @@ func (obj *TelemetryDataPlane) DettachIngresses() error {
 	return nil
 }
 
-func (obj *TelemetryDataPlane) AttachEgress(iface string) error {
+func (obj *TracingDataPlane) AttachEgress(iface string) error {
 	link, err := netlink.LinkByName(iface)
 	if err != nil {
 		return err
@@ -143,7 +143,7 @@ func (obj *TelemetryDataPlane) AttachEgress(iface string) error {
 	return nil
 }
 
-func (obj *TelemetryDataPlane) DettachEgresses() error {
+func (obj *TracingDataPlane) DettachEgresses() error {
 	for _, f := range obj.Efilters {
 		if err := netlink.FilterDel(f); err != nil {
 			return fmt.Errorf("Dettach Egress Error: %s", err)
@@ -157,7 +157,7 @@ func (obj *TelemetryDataPlane) DettachEgresses() error {
 	return nil
 }
 
-func (obj *TelemetryDataPlane) PacketInfoChan() (chan PacketInfo, error) {
+func (obj *TracingDataPlane) PacketInfoChan() (chan PacketInfo, error) {
 	pktChan := make(chan PacketInfo, 4096)
 	perfEvent, err := perf.NewReader(obj.PerfMap, 4096)
 	if err != nil {
@@ -185,7 +185,7 @@ func (obj *TelemetryDataPlane) PacketInfoChan() (chan PacketInfo, error) {
 	return pktChan, nil
 }
 
-func (obj *TelemetryDataPlane) SetMapConf(nid uint32) error {
+func (obj *TracingDataPlane) SetMapConf(nid uint32) error {
 	if err := obj.ConfigMap.Put(uint32(0), uint32(1)); err != nil {
 		return fmt.Errorf("Config Map Error: %s", err)
 	}

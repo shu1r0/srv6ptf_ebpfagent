@@ -6,13 +6,11 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/google/gopacket"
-	"github.com/google/gopacket/layers"
 	"github.com/shu1r0/srv6tracking_ebpfagent/pkg/ebpf"
 )
 
 func main() {
-	dp, err := ebpf.NewTelemetryDataPlane(nil)
+	dp, err := ebpf.NewTracingDataPlane(nil)
 	if err != nil {
 		panic(fmt.Errorf("Telemetry DP Error: %s", err))
 	}
@@ -39,9 +37,10 @@ func main() {
 			pktinfo := <-pktchan
 			fmt.Println("********** getPacket **********")
 			fmt.Println(hex.EncodeToString(pktinfo.Pkt[24:]))
+			fmt.Printf("Packet ID : %d", pktinfo.PktId)
 			fmt.Println(hex.Dump(pktinfo.Pkt[24:]))
-			pkt := gopacket.NewPacket(pktinfo.Pkt[24:], layers.LayerTypeEthernet, gopacket.Default)
-			fmt.Println(pkt)
+			//pkt := gopacket.NewPacket(pktinfo.Pkt[24:], layers.LayerTypeEthernet, gopacket.Default)
+			//fmt.Println(pkt)
 		}
 	}()
 	<-quit
