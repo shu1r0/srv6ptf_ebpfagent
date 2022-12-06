@@ -6,7 +6,7 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/shu1r0/srv6tracking_ebpfagent/pkg/ebpf"
+	"github.com/shu1r0/srv6tracing_ebpfagent/pkg/ebpf"
 )
 
 func main() {

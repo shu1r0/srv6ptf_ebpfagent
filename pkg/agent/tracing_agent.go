@@ -3,11 +3,11 @@ package api
 import (
 	"context"
 	"fmt"
-	"github.com/shu1r0/srv6tracking_ebpfagent/pkg/api"
+	"github.com/shu1r0/srv6tracing_ebpfagent/pkg/api"
 	"log"
 	"net"
 
-	"github.com/shu1r0/srv6tracking_ebpfagent/pkg/ebpf"
+	"github.com/shu1r0/srv6tracing_ebpfagent/pkg/ebpf"
 	"google.golang.org/grpc"
 )
 
@@ -58,7 +58,7 @@ func (cp *TracingAgent) SetDp(nodeid uint32) {
 }
 
 func (cp *TracingAgent) Stop() {
-	cp.Server.Stop()
+	cp.Server.GracefulStop()
 	cp.Dp.Close()
 	cp.Dp.DettachAll()
 }

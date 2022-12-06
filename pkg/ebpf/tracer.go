@@ -29,7 +29,7 @@ type TracingDataPlane struct {
 func NewTracingDataPlane(options *ebpf.CollectionOptions) (*TracingDataPlane, error) {
 	dp := &TracingDataPlane{}
 
-	spec, err := loadTelemetry()
+	spec, err := loadTracer()
 	if err != nil {
 		return nil, err
 	}
