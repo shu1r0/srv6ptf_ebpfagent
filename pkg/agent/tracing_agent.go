@@ -1,13 +1,14 @@
-package api
+package agent
 
 import (
 	"context"
 	"fmt"
 	"github.com/shu1r0/srv6tracing_ebpfagent/pkg/api"
-	"log"
 	"net"
+	"sync"
 
 	"github.com/shu1r0/srv6tracing_ebpfagent/pkg/ebpf"
+	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 )
 
@@ -31,33 +32,36 @@ func NewTracingAgent(ip string, port int) (*TracingAgent, error) {
 }
 
 func (cp *TracingAgent) Start() {
-	lis, err := net.Listen(("tcp"), fmt.Sprintf("localhost:%d", cp.Port))
+	log.Info("Start gRPC Server.")
+	lis, err := net.Listen(("tcp"), fmt.Sprintf("%s:%d", cp.Ip, cp.Port))
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	api.RegisterPacketCollectServiceServer(cp.Server, cp)
 
 	if err := cp.Server.Serve(lis); err != nil {
-		panic(err)
+		log.Fatalf("failed to serve: %v", err)
 	}
 }
 
 func (cp *TracingAgent) SetDp(nodeid uint32) {
+	log.Info("Set eBPF program.")
 	cp.NodeId = nodeid
 	if err := cp.Dp.AttachAll(); err != nil {
-		panic(fmt.Errorf("Attach All Error: %s", err))
+		log.Fatalf("Attach All Error: %s", err)
 	}
 	if err := cp.Dp.SetMapConf(cp.NodeId); err != nil {
-		panic(fmt.Errorf("Map Config Error: %s", err))
+		log.Fatalf("Map Config Error: %s", err)
 	}
 	pktchan, err := cp.Dp.PacketInfoChan()
 	if err != nil {
-		panic(fmt.Errorf("Packet Info Error: %s", err))
+		log.Fatalf("Packet Info Error: %s", err)
 	}
 	cp.InfoChan = pktchan
 }
 
 func (cp *TracingAgent) Stop() {
+	log.Info("Stop gRPC Server.")
 	cp.Server.GracefulStop()
 	cp.Dp.Close()
 	cp.Dp.DettachAll()
@@ -65,27 +69,36 @@ func (cp *TracingAgent) Stop() {
 
 func (cp *TracingAgent) SetPoll(context.Context, *api.PollSettingRequest) (*api.PollSettingReply, error) {
 	// 仮実装
+	log.Info("Called SetPoll")
 	rep := &api.PollSettingReply{}
 	return rep, nil
 }
 
 func (cp *TracingAgent) GetPacketInfo(context.Context, *api.PacketInfoRequest) (*api.PacketInfoReply, error) {
 	// 仮実装
+	log.Info("Called GetPacketInfo")
 	rep := &api.PacketInfoReply{}
 	return rep, nil
 }
 
 func (cp *TracingAgent) GetPacketInfoStream(req *api.PacketInfoStreamRequest, stream api.PacketCollectService_GetPacketInfoStreamServer) error {
+	log.Info("Called GetPacketInfoStream")
+	var wg sync.WaitGroup
+	wg.Add(1)
 	// TODO: couter_length
 	cp.SetDp(req.NodeId)
 
 	go func() {
-		pktinfo := <-cp.InfoChan
+		for {
+			pktinfo := <-cp.InfoChan
 
-		if err := stream.Send(cp.pkti2msg(&pktinfo)); err != nil {
-			panic(err)
+			if err := stream.Send(cp.pkti2msg(&pktinfo)); err != nil {
+				wg.Done()
+				log.Error(err)
+			}
 		}
 	}()
+	wg.Wait()
 	return nil
 }
 

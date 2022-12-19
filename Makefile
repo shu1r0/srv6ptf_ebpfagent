@@ -3,6 +3,7 @@ all: build
 build: 
 	go generate ./...
 	cd examples/dumpframe/;go build main.go;cd -
+	cd cmd/srv6_tracing_agent/;go build main.go;cd -
 	cd ./pkg/ebpf/;rm *.tmp *.o.*;cd -
 
 proto:
