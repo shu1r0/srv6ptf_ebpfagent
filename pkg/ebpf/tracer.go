@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	log "github.com/sirupsen/logrus"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/perf"
@@ -61,10 +62,10 @@ func (obj *TracingDataPlane) AttachAll() error {
 
 func (obj *TracingDataPlane) DettachAll() {
 	if err := obj.DettachIngresses(); err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 	if err := obj.DettachEgresses(); err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 }
 
@@ -171,11 +172,11 @@ func (obj *TracingDataPlane) PacketInfoChan() (chan PacketInfo, error) {
 				if errors.Unwrap(err) == perf.ErrClosed {
 					break
 				}
-				panic(fmt.Errorf("PacketInfoChan perf read error: %s", err))
+				log.Errorf("PacketInfoChan perf read error: %s", err)
 			}
 			reader := bytes.NewReader(ev.RawSample)
 			if err := binary.Read(reader, binary.LittleEndian, &item); err != nil {
-				panic(fmt.Errorf("PacketInfoChan read binary error: %s", err))
+				log.Errorf("PacketInfoChan read binary error: %s", err)
 			}
 			// pkt := gopacket.NewPacket(ev.RawSample, layers.LayerTypeEthernet, gopacket.Default)
 			pktinfo := NewPacketInfo(ev.RawSample, int(item.Pktid), int(item.MonotonicTimestamp), int(item.Hookpoint))
