@@ -2,10 +2,11 @@ package main
 
 import (
 	"flag"
-	"github.com/shu1r0/srv6tracing_ebpfagent/pkg/agent"
-	log "github.com/sirupsen/logrus"
 	"os"
 	"os/signal"
+
+	"github.com/shu1r0/srv6tracing_ebpfagent/pkg/agent"
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {

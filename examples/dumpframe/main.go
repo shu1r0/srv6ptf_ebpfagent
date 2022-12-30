@@ -36,8 +36,11 @@ func main() {
 		for {
 			pktinfo := <-pktchan
 			fmt.Println("********** getPacket **********")
-			fmt.Println(hex.EncodeToString(pktinfo.Pkt[24:]))
-			fmt.Printf("Packet ID : %d", pktinfo.PktId)
+			fmt.Printf("Get Data: %s\n", hex.EncodeToString(pktinfo.Pkt))
+			fmt.Printf("Packet : %s\n", hex.EncodeToString(pktinfo.Pkt[24:]))
+			fmt.Printf("Packet ID : %b\n", pktinfo.PktId)
+			fmt.Printf("Timestamp (mono): %b\n", pktinfo.MonotoricTimestamp)
+			fmt.Printf("Hook: %d\n", pktinfo.Hookpoint)
 			fmt.Println(hex.Dump(pktinfo.Pkt[24:]))
 			//pkt := gopacket.NewPacket(pktinfo.Pkt[24:], layers.LayerTypeEthernet, gopacket.Default)
 			//fmt.Println(pkt)

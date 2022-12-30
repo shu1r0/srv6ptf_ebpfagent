@@ -51,9 +51,10 @@ static __always_inline struct sr6_pktid_tlv new_pktid_tlv(int nodeid, int counte
   return tlv;
 }
 
-static __always_inline unsigned long countertoi(struct sr6_pktid_tlv *tlv)
+static __always_inline unsigned long countertoi(struct sr6_pktid_tlv *tlv, void *data_end)
 {
   unsigned long counter = 0;
+#pragma clang loop unroll(full)
   for (int i = 0; i < PKTID_TLV_COUNTER_LEN; i++)
   {
     counter += tlv->counter[i] << (8 * (PKTID_TLV_COUNTER_LEN - i - 1));
@@ -64,6 +65,7 @@ static __always_inline unsigned long countertoi(struct sr6_pktid_tlv *tlv)
 static __always_inline unsigned long nodeidtoi(struct sr6_pktid_tlv *tlv)
 {
   unsigned long nodeid = 0;
+#pragma clang loop unroll(full)
   for (int i = 0; i < PKTID_TLV_NODEID_LEN; i++)
   {
     nodeid += tlv->node_id[i] << (8 * (PKTID_TLV_NODEID_LEN - i - 1));
@@ -196,7 +198,7 @@ static __always_inline struct sr6_pktid_tlv *get_pktidtlv(struct ipv6_sr_hdr *sr
     if (tlv->type == PKTID_TLV_TYPE)
     {
       struct sr6_pktid_tlv *pktid_tlv = tlv;
-      if ((void *)pktid_tlv + sizeof(*pktid_tlv) > data_end)
+      if ((void *)pktid_tlv + sizeof(*pktid_tlv) + sizeof(pktid_tlv->node_id) + sizeof(pktid_tlv->counter) > data_end)
       {
         return NULL;
       }
@@ -409,18 +411,20 @@ static __always_inline bool push_pktidtlv_skb(struct __sk_buff *skb, int tlv_off
  * @param hookpoint
  * @return __always_inline
  */
-static __always_inline long perf_event(void *ctx, __u64 packet_size, long pktid, __u8 hookpoint)
+static __always_inline long perf_event(void *ctx, __u64 packet_size, unsigned long pktid, __u8 hookpoint)
 {
   struct perf_event_item evt = {
-      .pktid = pktid,
-      .hookpoint = hookpoint,
+      .pktid = 0,
+      .hookpoint = 0,
       .padding1 = 0,
       .padding2 = 0,
   };
-  evt.monotonic_timestamp = bpf_ktime_get_ns();
-
   // ensure padding
   __builtin_memset(&evt, 0, sizeof(evt));
+
+  evt.pktid = pktid;
+  evt.hookpoint = hookpoint;
+  evt.monotonic_timestamp = bpf_ktime_get_ns();
 
   __u64 flags = BPF_F_CURRENT_CPU | (packet_size << 32);
   return bpf_perf_event_output(ctx, &perf_map, flags, &evt, sizeof(evt));
@@ -452,7 +456,8 @@ int ingress(struct xdp_md *ctx)
   {
     bpf_trace("Ingress: PktId TLV Packet");
     // Perf Event
-    unsigned long pktid = (nodeidtoi(tlv->node_id) << sizeof(tlv->counter)) | countertoi(tlv->counter);
+
+    unsigned long pktid = (nodeidtoi(tlv->node_id) << sizeof(tlv->counter)) | countertoi(tlv->counter, data_end);
     perf_event(ctx, packet_size, pktid, 1);
   }
   else
