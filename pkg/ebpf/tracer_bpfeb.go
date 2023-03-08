@@ -13,6 +13,12 @@ import (
 	"github.com/cilium/ebpf"
 )
 
+type tracerPerfEventItem struct {
+	Pktid              uint32
+	MonotonicTimestamp uint64
+	Hookpoint          uint8
+}
+
 // loadTracer returns the embedded CollectionSpec for tracer.
 func loadTracer() (*ebpf.CollectionSpec, error) {
 	reader := bytes.NewReader(_TracerBytes)

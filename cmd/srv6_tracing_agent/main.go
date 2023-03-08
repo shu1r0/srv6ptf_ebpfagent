@@ -14,8 +14,15 @@ func main() {
 		ip   = flag.String("ip", "[::]", "server ip address")
 		port = flag.Int("port", 31000, "server port")
 		logf = flag.String("log-file", "", "log file")
+		logl = flag.String("log-level", "info", "log level (panic, fatal, error, warn, info, debug, trace)")
 	)
 	flag.Parse()
+
+	l, e := log.ParseLevel(*logl)
+	if e != nil {
+		log.Fatalf("Unkonwn Log Level %s", *logl)
+	}
+	log.SetLevel(l)
 
 	if len(*logf) <= 0 {
 		log.SetOutput(os.Stdout)

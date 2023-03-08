@@ -15,9 +15,6 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-//go:linkname now time.now
-// func now() (sec int64, nsec int32, mono int64)
-
 type PerfEventItem struct {
 	Pktid              uint32
 	MonotonicTimestamp uint64
@@ -183,14 +180,6 @@ func (obj *TracingDataPlane) PacketInfoChan() (chan PacketInfo, error) {
 			if err := binary.Read(reader, binary.LittleEndian, &item); err != nil {
 				log.Errorf("PacketInfoChan read binary error: %s", err)
 			}
-			// bi := make([]byte, binary.MaxVarintLen64)
-			// binary.PutUvarint(bi, item.MonotonicTimestamp)
-			// var ti uint64
-			// if err := binary.Read(bytes.NewReader(bi), binary.LittleEndian, &ti); err != nil {
-			// 	log.Errorf("PacketInfoChan read Timestamp binary error: %s", err)
-			// }
-			// item.MonotonicTimestamp = ti
-			// pkt := gopacket.NewPacket(ev.RawSample, layers.LayerTypeEthernet, gopacket.Default)
 			pktinfo := NewPacketInfo(ev.RawSample, int(item.Pktid), item.MonotonicTimestamp, int(item.Hookpoint))
 			pktChan <- *pktinfo
 		}

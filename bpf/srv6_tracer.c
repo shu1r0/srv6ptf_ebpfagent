@@ -80,14 +80,19 @@ struct bpf_map_def SEC("maps") perf_map = {
 };
 
 // PerfEvent item
+//
+// Set `unused` to specify the type in bpf2go.
+// Optimization methods are different between C structures and Go structures.
+// When converting a structure, padding is performed, and the conversion may not be successful.
+// Therefore, it is necessary to inform the type to be converted using type.
+// cf. https://github.com/cilium/ebpf/issues/821
 struct perf_event_item
 {
-  unsigned long pktid;                    // 4 bytes
-  unsigned long long monotonic_timestamp; // 8bytes
-  __u8 hookpoint;                         // 1 btyes
-  __u16 padding1;
-  __u8 padding2;
-};
+  __u32 pktid;               // 4 bytes
+  __u64 monotonic_timestamp; // 8 bytes
+  __u8 hookpoint;            // 1 btyes
+} __attribute__((packed));
+struct perf_event_item *unused_event __attribute__((unused));
 
 // Config Map
 // 0: None
@@ -175,8 +180,10 @@ static __always_inline struct ipv6_sr_hdr *get_srh(void *data, void *data_end)
  */
 static __always_inline struct sr6_pktid_tlv *get_pktidtlv(struct ipv6_sr_hdr *srh, void *data, void *data_end)
 {
-  int len = (srh->hdrlen + 1) << 3;                                                            // SRH length including header (bytes)
-  unsigned int tlv_offset = sizeof(*srh) + (srh->first_segment + 1) * sizeof(struct in6_addr); // srh header length + segment list length(= segment number * ipv6address length(16 bytes))
+  // SRH length including header (bytes)
+  int len = (srh->hdrlen + 1) << 3;
+  // srh header length + segment list length(= segment number * ipv6address length(16 bytes))
+  unsigned int tlv_offset = sizeof(*srh) + (srh->first_segment + 1) * sizeof(struct in6_addr);
   int trailing = len - tlv_offset;
 
 #pragma clang loop unroll(full)
@@ -416,8 +423,6 @@ static __always_inline long perf_event(void *ctx, __u64 packet_size, unsigned lo
   struct perf_event_item evt = {
       .pktid = 0,
       .hookpoint = 0,
-      .padding1 = 0,
-      .padding2 = 0,
   };
   // ensure padding
   __builtin_memset(&evt, 0, sizeof(evt));

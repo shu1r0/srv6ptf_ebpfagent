@@ -12,14 +12,6 @@ EOS
 
 
 # ------------------------------------------------------------
-# install Lubutu Desktop
-# ------------------------------------------------------------
-$install_lubuntu = <<SCRIPT
-sudo apt install -y --no-install-recommends lubuntu-desktop
-SCRIPT
-
-
-# ------------------------------------------------------------
 # VM config
 # ------------------------------------------------------------
 VAGRANTFILE_API_VERSION = "2"
@@ -34,8 +26,13 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.provision "shell", path: "scripts/bootstrap.sh"
   config.vm.provision "shell", path: "scripts/setup_bpf.sh"
   config.vm.provision "shell", path: "scripts/setup_testpkg.sh"
-  config.vm.provision 'shell', inline: $install_lubuntu
-
+  config.vm.provision 'shell', inline: <<-SCRIPT
+      sudo apt install -y --no-install-recommends lubuntu-desktop
+  SCRIPT
+  config.vm.provision 'shell', inline: <<-SCRIPT
+      sed -i "/^[^#]*PasswordAuthentication[[:space:]]no/c\PasswordAuthentication yes" /etc/ssh/sshd_config
+      systemctl restart sshd
+  SCRIPT
   config.vm.provider "virtualbox" do |vb|
     vb.name = $name
     vb.gui = true

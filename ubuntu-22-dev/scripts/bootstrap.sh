@@ -4,10 +4,8 @@
 sudo apt update -y
 sudo apt upgrade -y
 
-# ssh
-# sed -i "/PasswordAuthentication/c\PasswordAuthentication yes" /etc/ssh/sshd_config
-# systemctl restart sshd
 
+# for Japanese
 sudo timedatectl set-timezone Asia/Tokyo
 sudo cat << 'EOF' | sudo tee /etc/default/keyboard
 # KEYBOARD CONFIGURATION FILE
@@ -19,4 +17,3 @@ XKBOPTIONS=""
 
 BACKSPACE="guess"
 EOF
-SCRIPT
