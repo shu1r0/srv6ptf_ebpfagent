@@ -1,5 +1,7 @@
 # Fork from https://github.com/github/gitignore/blob/main/Go.gitignore
 
+.idea/
+
 /private
 .vagrant
 
