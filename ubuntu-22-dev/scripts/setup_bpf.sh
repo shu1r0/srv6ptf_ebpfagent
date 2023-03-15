@@ -19,7 +19,7 @@ sudo apt-get install -y cmake g++ git automake libtool libgc-dev bison flex \
 libfl-dev libgmp-dev libboost-dev libboost-iostreams-dev \
 libboost-graph-dev llvm pkg-config python python-scapy python-ipaddr python-ply python3-pip tcpdump \
 build-essential autoconf libtool curl git libpcap-dev gcc-multilib unzip python3-distutils
-sudo apt install linux-tools-$(uname -r) linux-tools-generic
+sudo apt install -y linux-tools-$(uname -r) linux-tools-generic
 
 sudo apt install -y libbpf-dev
 
