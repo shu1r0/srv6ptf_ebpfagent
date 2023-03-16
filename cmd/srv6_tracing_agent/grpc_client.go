@@ -41,9 +41,8 @@ func GetPacketInfo(ip string, port int) {
 		if err != nil {
 			log.Fatalf("Stream Recv Error: %s", err)
 		}
-		log.Println(res.GetPacket())
-		return
-
+		log.Printf("Recv PacktInfo msg: %s\n", res.String())
+		//return
 	}
 }
 
@@ -54,7 +53,9 @@ func main() {
 	)
 	flag.Parse()
 
+	log.SetLevel(log.DebugLevel)
 	log.SetOutput(os.Stdout)
-	log.Info("Get Packet Request")
+	log.Info("Start Packet Request")
 	GetPacketInfo(*ip, *port)
+	log.Info("Stop Packet Request")
 }

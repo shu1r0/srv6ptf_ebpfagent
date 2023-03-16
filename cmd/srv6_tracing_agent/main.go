@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"github.com/shu1r0/srv6tracing_ebpfagent/internal/log_utils"
 	"os"
 	"os/signal"
 
@@ -18,27 +19,7 @@ func main() {
 	)
 	flag.Parse()
 
-	l, e := log.ParseLevel(*logl)
-	if e != nil {
-		log.Fatalf("Unkonwn Log Level %s", *logl)
-	}
-	log.SetLevel(l)
-
-	if len(*logf) <= 0 {
-		log.SetOutput(os.Stdout)
-	} else {
-		f, err := os.Create(*logf)
-		if err != nil {
-			log.Panic(err)
-		}
-		defer func() {
-			if err := f.Close(); err != nil {
-				log.Panic(err)
-			}
-		}()
-
-		log.SetOutput(f)
-	}
+	log_utils.SetupLogger(*logl, *logf)
 
 	ag, err := agent.NewTracingAgent(*ip, *port)
 	if err != nil {

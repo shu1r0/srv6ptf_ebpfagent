@@ -5,7 +5,7 @@ GOOS=$(shell go env GOOS)
 GOARCH=$(shell go env GOARCH)
 
 
-DUMPFRAME_DIR="./examples/dumpframe/"
+DUMPFRAME_DIR="./cmd/dumpframe/"
 TRACING_AGENT_DIR="./cmd/srv6_tracing_agent/"
 
 clean:

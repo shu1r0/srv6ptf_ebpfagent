@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"net"
 	"sync"
@@ -96,12 +97,12 @@ func (cp *TracingAgent) GetPacketInfoStream(req *api.PacketInfoStreamRequest, st
 		for {
 			pktinfo := <-cp.InfoChan
 
-			//log.Traceln("********** getPacket **********")
-			//log.Tracef("Get Data: %s\n", hex.EncodeToString(pktinfo.Pkt))
-			//log.Tracef("Packet : %s\n", hex.EncodeToString(pktinfo.Pkt[24:]))
-			//log.Tracef("Packet ID : %b\n", pktinfo.PktId)
-			//log.Tracef("Timestamp (mono): %b\n", pktinfo.MonotoricTimestamp)
-			//log.Tracef("Hook: %d\n", pktinfo.Hookpoint)
+			log.Traceln("********** getPacket **********")
+			log.Tracef("Get Data: %s\n", hex.EncodeToString(pktinfo.Pkt))
+			log.Tracef("Packet : %s\n", hex.EncodeToString(pktinfo.Pkt[24:]))
+			log.Tracef("Packet ID : %b\n", pktinfo.PktId)
+			log.Tracef("Timestamp (mono): %b\n", pktinfo.MonotoricTimestamp)
+			log.Tracef("Hook: %d\n", pktinfo.Hookpoint)
 
 			if err := stream.Send(cp.pkti2msg(&pktinfo)); err != nil {
 				wg.Done()
@@ -115,6 +116,7 @@ func (cp *TracingAgent) GetPacketInfoStream(req *api.PacketInfoStreamRequest, st
 }
 
 func (cp *TracingAgent) pkti2msg(pkt *ebpf.PacketInfo) *api.PacketInfo {
+
 	msg := &api.PacketInfo{
 		NodeId:    cp.NodeId,
 		Timestamp: float64(pkt.MonotoricTimestamp + uint64(cp.diffWallMono)),
@@ -130,5 +132,6 @@ func (cp *TracingAgent) pkti2msg(pkt *ebpf.PacketInfo) *api.PacketInfo {
 		msg.Data = &api.PacketInfo_PacketId{PacketId: uint64(pkt.PktId)}
 	}
 
+	log.Tracef("PcketInfo gRPC msg: %s", msg.String())
 	return msg
 }
