@@ -74,7 +74,7 @@ func (obj *TracingDataPlane) DettachAll() {
 func (obj *TracingDataPlane) AttachIngress(iface string) error {
 	link, err := netlink.LinkByName(iface)
 	if err != nil {
-		return fmt.Errorf("Attack Ingress Error: %s", err)
+		return fmt.Errorf("Attach Ingress Error: %s", err)
 	}
 
 	if err := netlink.LinkSetXdpFd(link, obj.tracerPrograms.Ingress.FD()); err != nil {
@@ -118,7 +118,7 @@ func (obj *TracingDataPlane) AttachEgress(iface string) error {
 		QdiscType:  "clsact",
 	}
 	if err := netlink.QdiscAdd(qdic); err != nil {
-		return fmt.Errorf("Attack Egress Qdisc Add Error: %s", err)
+		return fmt.Errorf("Attach Egress Qdisc Add Error: %s", err)
 	}
 	obj.Eqdiscs = append(obj.Eqdiscs, qdic)
 
@@ -137,7 +137,7 @@ func (obj *TracingDataPlane) AttachEgress(iface string) error {
 		DirectAction: true,
 	}
 	if err := netlink.FilterAdd(filter); err != nil {
-		return fmt.Errorf("Attack Egress Filter Add Error: %s", err)
+		return fmt.Errorf("Attach Egress Filter Add Error: %s", err)
 	}
 
 	obj.EIfaces = append(obj.EIfaces, iface)
