@@ -19,7 +19,13 @@ func main() {
 	)
 	flag.Parse()
 
-	log_utils.SetupLogger(*logl, *logf)
+	if f := log_utils.SetupLogger(*logl, *logf); f != nil {
+		defer func() {
+			if err := f.Close(); err != nil {
+				log.Panic(err)
+			}
+		}()
+	}
 
 	ag, err := agent.NewTracingAgent(*ip, *port)
 	if err != nil {

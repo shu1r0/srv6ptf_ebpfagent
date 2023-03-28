@@ -9,7 +9,7 @@ sudo ./netns_network_examples/simple/2hosts.sh -d
 sudo ./setup.sh
 
 cd ..
-make build
+make install
 cd -
 
 set -e
