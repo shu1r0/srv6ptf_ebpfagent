@@ -14,7 +14,7 @@ func main() {
 	var (
 		ip   = flag.String("ip", "[::]", "server ip address")
 		port = flag.Int("port", 31000, "server port")
-		logf = flag.String("log-file", "", "log file")
+		logf = flag.String("log-file", "/var/log/srv6_ptf/collector-agent.log", "log file")
 		logl = flag.String("log-level", "info", "log level (panic, fatal, error, warn, info, debug, trace)")
 	)
 	flag.Parse()

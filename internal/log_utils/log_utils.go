@@ -15,7 +15,7 @@ func SetupLogger(logl string, logf string) {
 	if len(logf) <= 0 {
 		log.SetOutput(os.Stdout)
 	} else {
-		f, err := os.Create(logf)
+		f, err := os.OpenFile(logf, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 		if err != nil {
 			log.Panic(err)
 		}
