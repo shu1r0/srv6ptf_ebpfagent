@@ -3,9 +3,14 @@ package main
 import (
 	"encoding/hex"
 	"flag"
-	"github.com/shu1r0/srv6tracing_ebpfagent/internal/log_utils"
+	"fmt"
 	"os"
 	"os/signal"
+
+	"github.com/google/gopacket"
+	"github.com/google/gopacket/layers"
+
+	"github.com/shu1r0/srv6tracing_ebpfagent/internal/log_utils"
 
 	"github.com/shu1r0/srv6tracing_ebpfagent/pkg/ebpf"
 	log "github.com/sirupsen/logrus"
@@ -18,7 +23,13 @@ func main() {
 	)
 	flag.Parse()
 
-	log_utils.SetupLogger(*logl, *logf)
+	if f := log_utils.SetupLogger(*logl, *logf); f != nil {
+		defer func() {
+			if err := f.Close(); err != nil {
+				log.Panic(err)
+			}
+		}()
+	}
 
 	dp, err := ebpf.NewTracingDataPlane(nil)
 	if err != nil {
@@ -47,13 +58,13 @@ func main() {
 			pktinfo := <-pktchan
 			log.Println("********** getPacket **********")
 			log.Printf("Get Data: %s\n", hex.EncodeToString(pktinfo.Pkt))
-			log.Printf("Packet : %s\n", hex.EncodeToString(pktinfo.Pkt[24:]))
+			log.Printf("Packet : %s\n", hex.EncodeToString(pktinfo.Pkt))
 			log.Printf("Packet ID : %b\n", pktinfo.PktId)
 			log.Printf("Timestamp (mono): %d\n", pktinfo.MonotoricTimestamp)
 			log.Printf("Hook: %d\n", pktinfo.Hookpoint)
-			log.Println(hex.Dump(pktinfo.Pkt[24:]))
-			//pkt := gopacket.NewPacket(pktinfo.Pkt[24:], layers.LayerTypeEthernet, gopacket.Default)
-			//fmt.Println(pkt)
+			log.Println(hex.Dump(pktinfo.Pkt))
+			pkt := gopacket.NewPacket(pktinfo.Pkt, layers.LayerTypeEthernet, gopacket.Default)
+			fmt.Println(pkt)
 		}
 	}()
 	<-quit

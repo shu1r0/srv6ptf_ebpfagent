@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	_ "unsafe"
 
 	log "github.com/sirupsen/logrus"
 
@@ -20,6 +19,8 @@ type PerfEventItem struct {
 	MonotonicTimestamp uint64
 	Hookpoint          uint8
 }
+
+var PerfEventItemSize = 13
 
 type TracingDataPlane struct {
 	tracerObjects
@@ -180,7 +181,7 @@ func (obj *TracingDataPlane) PacketInfoChan() (chan PacketInfo, error) {
 			if err := binary.Read(reader, binary.LittleEndian, &item); err != nil {
 				log.Errorf("PacketInfoChan read binary error: %s", err)
 			}
-			pktinfo := NewPacketInfo(ev.RawSample, int(item.Pktid), item.MonotonicTimestamp, int(item.Hookpoint))
+			pktinfo := NewPacketInfo(ev.RawSample[PerfEventItemSize:], int(item.Pktid), item.MonotonicTimestamp, int(item.Hookpoint))
 			pktChan <- *pktinfo
 		}
 	}()
