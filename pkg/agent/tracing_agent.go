@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"math"
 	"net"
 	"sync"
 
@@ -23,7 +24,7 @@ type TracingAgent struct {
 	InfoChan     chan ebpf.PacketInfo
 	Dp           *ebpf.TracingDataPlane
 	NodeId       uint32
-	diffWallMono uint
+	diffWallMono float64
 }
 
 func NewTracingAgent(ip string, port int) (*TracingAgent, error) {
@@ -98,8 +99,7 @@ func (cp *TracingAgent) GetPacketInfoStream(req *api.PacketInfoStreamRequest, st
 			pktinfo := <-cp.InfoChan
 
 			log.Traceln("********** getPacket **********")
-			log.Tracef("Get Data: %s\n", hex.EncodeToString(pktinfo.Pkt))
-			log.Tracef("Packet : %s\n", hex.EncodeToString(pktinfo.Pkt[24:]))
+			log.Tracef("Packet : %s\n", hex.EncodeToString(pktinfo.Pkt))
 			log.Tracef("Packet ID : %b\n", pktinfo.PktId)
 			log.Tracef("Timestamp (mono): %b\n", pktinfo.MonotoricTimestamp)
 			log.Tracef("Hook: %d\n", pktinfo.Hookpoint)
@@ -119,7 +119,7 @@ func (cp *TracingAgent) pkti2msg(pkt *ebpf.PacketInfo) *api.PacketInfo {
 
 	msg := &api.PacketInfo{
 		NodeId:    cp.NodeId,
-		Timestamp: float64(pkt.MonotoricTimestamp + uint64(cp.diffWallMono)),
+		Timestamp: float64(pkt.MonotoricTimestamp)*math.Pow(10, -10) + cp.diffWallMono,
 	}
 	if pkt.Hookpoint == 1 || pkt.Hookpoint == 2 {
 		msg.Metadata = &api.PacketInfo_EbpfInfo{EbpfInfo: &api.EBPFInfo{Hookpoint: api.EBPFHook_XDP}}

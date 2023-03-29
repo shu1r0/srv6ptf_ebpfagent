@@ -5,6 +5,8 @@
 /private
 .vagrant
 
+main
+
 *.o
 !tracer_bpfeb.o
 !tracer_bpfel.o
