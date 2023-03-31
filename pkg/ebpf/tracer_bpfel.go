@@ -14,7 +14,7 @@ import (
 )
 
 type tracerPerfEventItem struct {
-	Pktid              uint32
+	Pktid              uint64
 	MonotonicTimestamp uint64
 	Hookpoint          uint8
 }

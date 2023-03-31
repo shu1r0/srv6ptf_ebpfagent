@@ -38,11 +38,13 @@ struct sr6_pktid_tlv
  * @param counter
  * @return __always_inline struct*
  */
-static __always_inline struct sr6_pktid_tlv new_pktid_tlv(int nodeid, int counter)
+static __always_inline struct sr6_pktid_tlv new_pktid_tlv(__u16 nodeid, unsigned long counter)
 {
   struct sr6_pktid_tlv tlv = {
       .type = (__u8)PKTID_TLV_TYPE,
       .len = (__u8)(PKTID_TLV_NODEID_LEN + PKTID_TLV_COUNTER_LEN)};
+  nodeid = htons(nodeid);
+  counter = htonl(counter);
   __builtin_memcpy(tlv.node_id, (char *)&nodeid, sizeof(tlv.node_id));
   __builtin_memcpy(tlv.counter, (char *)&counter, sizeof(tlv.counter));
 
@@ -51,9 +53,9 @@ static __always_inline struct sr6_pktid_tlv new_pktid_tlv(int nodeid, int counte
   return tlv;
 }
 
-static __always_inline unsigned long countertoi(struct sr6_pktid_tlv *tlv, void *data_end)
+static __always_inline unsigned long long countertoi(struct sr6_pktid_tlv *tlv, void *data_end)
 {
-  unsigned long counter = 0;
+  unsigned long long counter = 0;
 #pragma clang loop unroll(full)
   for (int i = 0; i < PKTID_TLV_COUNTER_LEN; i++)
   {
@@ -62,9 +64,9 @@ static __always_inline unsigned long countertoi(struct sr6_pktid_tlv *tlv, void 
   return counter;
 }
 
-static __always_inline unsigned long nodeidtoi(struct sr6_pktid_tlv *tlv)
+static __always_inline unsigned long long nodeidtoi(struct sr6_pktid_tlv *tlv)
 {
-  unsigned long nodeid = 0;
+  unsigned long long nodeid = 0;
 #pragma clang loop unroll(full)
   for (int i = 0; i < PKTID_TLV_NODEID_LEN; i++)
   {
@@ -88,7 +90,7 @@ struct bpf_map_def SEC("maps") perf_map = {
 // cf. https://github.com/cilium/ebpf/issues/821
 struct perf_event_item
 {
-  __u32 pktid;               // 4 bytes
+  __u64 pktid;               // 8 bytes
   __u64 monotonic_timestamp; // 8 bytes
   __u8 hookpoint;            // 1 btyes
 } __attribute__((packed));
@@ -418,7 +420,7 @@ static __always_inline bool push_pktidtlv_skb(struct __sk_buff *skb, int tlv_off
  * @param hookpoint
  * @return __always_inline
  */
-static __always_inline long perf_event(void *ctx, __u64 packet_size, unsigned long pktid, __u8 hookpoint)
+static __always_inline long perf_event(void *ctx, __u64 packet_size, unsigned long long pktid, __u8 hookpoint)
 {
   struct perf_event_item evt = {
       .pktid = 0,
@@ -462,7 +464,7 @@ int ingress(struct xdp_md *ctx)
     bpf_trace("Ingress: PktId TLV Packet");
     // Perf Event
 
-    unsigned long pktid = (nodeidtoi(tlv->node_id) << sizeof(tlv->counter)) | countertoi(tlv->counter, data_end);
+    unsigned long long pktid = (nodeidtoi(tlv->node_id) << (PKTID_TLV_COUNTER_LEN * 8)) + countertoi(tlv->counter, data_end);
     perf_event(ctx, packet_size, pktid, 1);
   }
   else
@@ -487,7 +489,7 @@ int ingress(struct xdp_md *ctx)
     {
       (*count)++;
       // Perf Event
-      unsigned long pktid = (*node_id << PKTID_TLV_COUNTER_LEN) | *count;
+      unsigned long long pktid = ((unsigned long long)*node_id << (PKTID_TLV_COUNTER_LEN * 8)) | (unsigned long long)*count;
       perf_event(ctx, packet_size, pktid, 2);
     }
     else
@@ -549,7 +551,7 @@ int egress(struct __sk_buff *skb)
     {
       (*counter)++;
       // Perf Event
-      unsigned long pktid = (*node_id << PKTID_TLV_COUNTER_LEN) | *counter;
+      unsigned long long pktid = ((unsigned long long)*node_id << (PKTID_TLV_COUNTER_LEN * 8)) | (unsigned long long)*counter;
       perf_event(skb, packet_size, pktid, 4);
     }
     else

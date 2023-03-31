@@ -15,12 +15,12 @@ import (
 )
 
 type PerfEventItem struct {
-	Pktid              uint32
+	Pktid              uint64
 	MonotonicTimestamp uint64
 	Hookpoint          uint8
 }
 
-var PerfEventItemSize = 13
+var PerfEventItemSize = 17
 
 type TracingDataPlane struct {
 	tracerObjects
