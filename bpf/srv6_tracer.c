@@ -56,22 +56,28 @@ static __always_inline struct sr6_pktid_tlv new_pktid_tlv(__u16 nodeid, unsigned
 static __always_inline unsigned long long countertoi(struct sr6_pktid_tlv *tlv, void *data_end)
 {
   unsigned long long counter = 0;
-#pragma clang loop unroll(full)
-  for (int i = 0; i < PKTID_TLV_COUNTER_LEN; i++)
-  {
-    counter += tlv->counter[i] << (8 * (PKTID_TLV_COUNTER_LEN - i - 1));
-  }
+  // TODO
+  // #pragma clang loop unroll(full)
+  //   for (int i = 0; i < PKTID_TLV_COUNTER_LEN; i++)
+  //   {
+  //     counter += (__u8)tlv->counter[i] << (8 * (PKTID_TLV_COUNTER_LEN - i - 1));
+  //   }
+  __builtin_memcpy(counter, &tlv->counter, sizeof(tlv->counter));
+  counter = ntohl(counter);
   return counter;
 }
 
 static __always_inline unsigned long long nodeidtoi(struct sr6_pktid_tlv *tlv)
 {
   unsigned long long nodeid = 0;
-#pragma clang loop unroll(full)
-  for (int i = 0; i < PKTID_TLV_NODEID_LEN; i++)
-  {
-    nodeid += tlv->node_id[i] << (8 * (PKTID_TLV_NODEID_LEN - i - 1));
-  }
+  // TODO
+  // #pragma clang loop unroll(full)
+  //   for (int i = 0; i < PKTID_TLV_NODEID_LEN; i++)
+  //   {
+  //     nodeid += (__u8)tlv->node_id[i] << (8 * (PKTID_TLV_NODEID_LEN - i - 1));
+  //   }
+  __builtin_memcpy(nodeid, &tlv->node_id, sizeof(tlv->node_id));
+  nodeid = ntohs(nodeid);
   return nodeid;
 }
 

@@ -59,7 +59,7 @@ func main() {
 			log.Println("********** getPacket **********")
 			log.Printf("Get Data: %s\n", hex.EncodeToString(pktinfo.Pkt))
 			log.Printf("Packet : %s\n", hex.EncodeToString(pktinfo.Pkt))
-			log.Printf("Packet ID : %d\n", pktinfo.PktId)
+			log.Printf("Packet ID : %x\n", pktinfo.PktId)
 			log.Printf("Timestamp (mono): %d\n", pktinfo.MonotoricTimestamp)
 			log.Printf("Hook: %d\n", pktinfo.Hookpoint)
 			log.Println(hex.Dump(pktinfo.Pkt))
