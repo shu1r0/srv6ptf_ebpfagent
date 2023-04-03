@@ -45,8 +45,8 @@ static __always_inline struct sr6_pktid_tlv new_pktid_tlv(__u16 nodeid, unsigned
       .len = (__u8)(PKTID_TLV_NODEID_LEN + PKTID_TLV_COUNTER_LEN)};
   nodeid = htons(nodeid);
   counter = htonl(counter);
-  __builtin_memcpy(tlv.node_id, (char *)&nodeid, sizeof(tlv.node_id));
-  __builtin_memcpy(tlv.counter, (char *)&counter, sizeof(tlv.counter));
+  __builtin_memcpy(tlv.node_id, &nodeid, sizeof(PKTID_TLV_NODEID_LEN));
+  __builtin_memcpy(tlv.counter, &counter, sizeof(PKTID_TLV_COUNTER_LEN));
 
   bpf_debug("pktid addr=%u", &tlv);
 
