@@ -27,8 +27,9 @@ class TestSPacket(TestCase):
                 self.assertTrue(IPv6ExtHdrSegmentRoutingTLV in result["recv_pkt"])
         
         print("send packetid")
-        tlv = new_srh_tlv(type=124, value='\x00\x01\x00\x00\x00\x08')
-        result = ping1(dst="2001:db8:20::1", segs=["2001:db8:10::2"], hlim=1, srh_tlvs=[tlv])
+        tlv = new_srh_tlv(type=124, value='\x00\x01\x00\x00\x00\x01')
+        result = ping1(dst="2001:db8:20::1", segs=["2001:db8:10::2"], hlim=1, srh_tlvs=[tlv], return_pkt=True)
         self.assertEqual("TimeExceeded", result["msg"])
+        result["recv_pkt"].show()
         
         time.sleep(1)

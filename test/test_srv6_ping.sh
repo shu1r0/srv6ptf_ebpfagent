@@ -12,7 +12,7 @@ cd ..
 make install
 cd -
 
-set -e
+# set -e
 
 # -- Start network
 sudo ./netns_network_examples/simple/2hosts.sh -c
@@ -21,9 +21,6 @@ sudo ./netns_network_examples/simple/2hosts.sh -c
 sudo ip netns exec ns2 sudo ../cmd/srv6_tracing_agent/main -log-level trace &
 # start client
 sudo ip netns exec ns2 ../cmd/srv6_tracing_agent/grpc_client &
-
-sudo cat /sys/kernel/tracing/trace
-
 # run test
 sudo ip netns exec ns1 python3 -m unittest discover ./
 
@@ -38,7 +35,8 @@ sudo ip netns exec ns2 sudo ../cmd/dumpframe/main -log-level trace &
 # run test
 sudo ip netns exec ns1 python3 -m unittest discover ./
 
-sudo cat /sys/kernel/tracing/trace
+# print bpf trace
+# sudo cat /sys/kernel/tracing/trace
 sudo ./netns_network_examples/simple/2hosts.sh -d
 # -- Stop network
 

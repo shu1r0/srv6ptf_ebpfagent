@@ -45,8 +45,8 @@ static __always_inline struct sr6_pktid_tlv new_pktid_tlv(__u16 nodeid, unsigned
       .len = (__u8)(PKTID_TLV_NODEID_LEN + PKTID_TLV_COUNTER_LEN)};
   nodeid = htons(nodeid);
   counter = htonl(counter);
-  __builtin_memcpy(tlv.node_id, &nodeid, sizeof(PKTID_TLV_NODEID_LEN));
-  __builtin_memcpy(tlv.counter, &counter, sizeof(PKTID_TLV_COUNTER_LEN));
+  __builtin_memcpy(tlv.node_id, &nodeid, PKTID_TLV_NODEID_LEN);
+  __builtin_memcpy(tlv.counter, &counter, PKTID_TLV_COUNTER_LEN);
 
   bpf_debug("pktid addr=%u", &tlv);
 
@@ -55,28 +55,19 @@ static __always_inline struct sr6_pktid_tlv new_pktid_tlv(__u16 nodeid, unsigned
 
 static __always_inline unsigned long long countertoi(struct sr6_pktid_tlv *tlv, void *data_end)
 {
-  unsigned long long counter = 0;
-  // TODO
-  // #pragma clang loop unroll(full)
-  //   for (int i = 0; i < PKTID_TLV_COUNTER_LEN; i++)
-  //   {
-  //     counter += (__u8)tlv->counter[i] << (8 * (PKTID_TLV_COUNTER_LEN - i - 1));
-  //   }
-  __builtin_memcpy(&counter, &tlv->counter, sizeof(tlv->counter));
+  unsigned long counter = 0;
+  void *nodeid_off = (void *)tlv->node_id;
+  void *counter_off = nodeid_off + PKTID_TLV_NODEID_LEN;
+  __builtin_memcpy(&counter, counter_off, PKTID_TLV_COUNTER_LEN);
   counter = ntohl(counter);
   return counter;
 }
 
 static __always_inline unsigned long long nodeidtoi(struct sr6_pktid_tlv *tlv)
 {
-  unsigned long long nodeid = 0;
-  // TODO
-  // #pragma clang loop unroll(full)
-  //   for (int i = 0; i < PKTID_TLV_NODEID_LEN; i++)
-  //   {
-  //     nodeid += (__u8)tlv->node_id[i] << (8 * (PKTID_TLV_NODEID_LEN - i - 1));
-  //   }
-  __builtin_memcpy(&nodeid, &tlv->node_id, sizeof(tlv->node_id));
+  void *nodeid_off = (void *)tlv->node_id;
+  unsigned short nodeid = 0;
+  __builtin_memcpy(&nodeid, nodeid_off, PKTID_TLV_NODEID_LEN);
   nodeid = ntohs(nodeid);
   return nodeid;
 }
@@ -210,12 +201,12 @@ static __always_inline struct sr6_pktid_tlv *get_pktidtlv(struct ipv6_sr_hdr *sr
     }
 
     // is pktid tlv?
-    if (tlv->type == PKTID_TLV_TYPE)
+    if (tlv->type == PKTID_TLV_TYPE && tlv->len == 6)
     {
-      struct sr6_pktid_tlv *pktid_tlv = tlv;
+      struct sr6_pktid_tlv *pktid_tlv = (void *)tlv;
       if ((void *)pktid_tlv + sizeof(*pktid_tlv) + sizeof(pktid_tlv->node_id) + sizeof(pktid_tlv->counter) > data_end)
       {
-        bpf_warn("pktid tlv parse error");
+        bpf_warn("pktid tlv parse error. %u", 7);
         return NULL;
       }
       return pktid_tlv;
@@ -225,6 +216,7 @@ static __always_inline struct sr6_pktid_tlv *get_pktidtlv(struct ipv6_sr_hdr *sr
       bpf_trace("This TLV type %d is not pktidtlv", tlv->type);
     }
 
+    // update len
     tlv_len = sizeof(*tlv) + tlv->len;
     trailing -= tlv_len;
     if (trailing < 0)
@@ -475,7 +467,7 @@ int ingress(struct xdp_md *ctx)
     bpf_trace("Ingress: PktId TLV Packet");
     // Perf Event
 
-    unsigned long long pktid = (nodeidtoi(tlv->node_id) << (PKTID_TLV_COUNTER_LEN * 8)) + countertoi(tlv->counter, data_end);
+    unsigned long long pktid = (nodeidtoi(tlv) << (PKTID_TLV_COUNTER_LEN * 8)) + countertoi(tlv, data_end);
     perf_event(ctx, packet_size, pktid, 1);
   }
   else
