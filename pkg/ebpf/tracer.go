@@ -188,14 +188,14 @@ func (obj *TracingDataPlane) PacketInfoChan() (chan PacketInfo, error) {
 	return pktChan, nil
 }
 
-func (obj *TracingDataPlane) SetMapConf(nid uint32) error {
-	if err := obj.ConfigMap.Put(uint32(0), uint32(1)); err != nil {
+func (obj *TracingDataPlane) SetMapConf(nid uint64) error {
+	if err := obj.ConfigMap.Put(uint32(0), uint64(1)); err != nil {
 		return fmt.Errorf("Config Map Error: %s", err)
 	}
 	if err := obj.ConfigMap.Put(uint32(1), nid); err != nil {
 		return fmt.Errorf("Set Nodeid Error: %s", err)
 	}
-	if err := obj.CounterMap.Put(uint32(0), uint32(1)); err != nil {
+	if err := obj.CounterMap.Put(uint32(0), uint64(1)); err != nil {
 		return fmt.Errorf("Counter Map Error: %s", err)
 	}
 	return nil

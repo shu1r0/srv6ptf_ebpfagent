@@ -56,7 +56,8 @@ func (cp *TracingAgent) SetDp(nodeid uint32) {
 	if err := cp.Dp.AttachAll(); err != nil {
 		log.Fatalf("Attach All Error: %s", err)
 	}
-	if err := cp.Dp.SetMapConf(cp.NodeId); err != nil {
+	//TODO: NodeId size
+	if err := cp.Dp.SetMapConf(uint64(cp.NodeId)); err != nil {
 		log.Fatalf("Map Config Error: %s", err)
 	}
 	pktchan, err := cp.Dp.PacketInfoChan()

@@ -23,54 +23,9 @@
 #define COUNTER_INDEX 0
 #define NODEID_INDEX 1
 
-struct sr6_pktid_tlv
-{
-  __u8 type;
-  __u8 len;
-  unsigned char node_id[PKTID_TLV_NODEID_LEN];
-  unsigned char counter[PKTID_TLV_COUNTER_LEN];
-};
-
-/**
- * @brief create new pktid tlv struct
- *
- * @param nodeid
- * @param counter
- * @return __always_inline struct*
- */
-static __always_inline struct sr6_pktid_tlv new_pktid_tlv(__u16 nodeid, unsigned long counter)
-{
-  struct sr6_pktid_tlv tlv = {
-      .type = (__u8)PKTID_TLV_TYPE,
-      .len = (__u8)(PKTID_TLV_NODEID_LEN + PKTID_TLV_COUNTER_LEN)};
-  nodeid = htons(nodeid);
-  counter = htonl(counter);
-  __builtin_memcpy(tlv.node_id, &nodeid, PKTID_TLV_NODEID_LEN);
-  __builtin_memcpy(tlv.counter, &counter, PKTID_TLV_COUNTER_LEN);
-
-  bpf_debug("pktid addr=%u", &tlv);
-
-  return tlv;
-}
-
-static __always_inline unsigned long long countertoi(struct sr6_pktid_tlv *tlv, void *data_end)
-{
-  unsigned long counter = 0;
-  void *nodeid_off = (void *)tlv->node_id;
-  void *counter_off = nodeid_off + PKTID_TLV_NODEID_LEN;
-  __builtin_memcpy(&counter, counter_off, PKTID_TLV_COUNTER_LEN);
-  counter = ntohl(counter);
-  return counter;
-}
-
-static __always_inline unsigned long long nodeidtoi(struct sr6_pktid_tlv *tlv)
-{
-  void *nodeid_off = (void *)tlv->node_id;
-  unsigned short nodeid = 0;
-  __builtin_memcpy(&nodeid, nodeid_off, PKTID_TLV_NODEID_LEN);
-  nodeid = ntohs(nodeid);
-  return nodeid;
-}
+/* ---------------------------------------- *
+ * MAP
+ * ---------------------------------------- */
 
 // Perf Map
 struct bpf_map_def SEC("maps") perf_map = {
@@ -94,12 +49,12 @@ struct perf_event_item
 struct perf_event_item *unused_event __attribute__((unused));
 
 // Config Map
-// 0: None
-// 1: NodeId
+// - 0: None
+// - 1: NodeId
 struct bpf_map_def SEC("maps") config_map = {
     .type = BPF_MAP_TYPE_ARRAY,
     .key_size = sizeof(__u32),
-    .value_size = sizeof(__u32),
+    .value_size = sizeof(__u64),
     .max_entries = 32,
     // .map_flags = 0,
 };
@@ -108,10 +63,102 @@ struct bpf_map_def SEC("maps") config_map = {
 struct bpf_map_def SEC("maps") counter_map = {
     .type = BPF_MAP_TYPE_ARRAY,
     .key_size = sizeof(__u32),
-    .value_size = sizeof(__u32),
+    .value_size = sizeof(__u64),
     .max_entries = 32,
     // .map_flags = 0,
 };
+
+/* ---------------------------------------- *
+ * Helpers
+ * ---------------------------------------- */
+
+struct sr6_pktid_tlv
+{
+  __u8 type;
+  __u8 len;
+  unsigned char node_id[PKTID_TLV_NODEID_LEN];
+  unsigned char counter[PKTID_TLV_COUNTER_LEN];
+};
+
+void convertByteOrder(unsigned char *array, __u64 length)
+{
+  unsigned char temp;
+
+#pragma clang loop unroll(full)
+  for (int i = 0; i < length / 2; i++)
+  {
+    temp = array[i];
+    array[i] = array[length - i - 1];
+    array[length - i - 1] = temp;
+  }
+}
+
+__u64 convertToUint(unsigned char *array, __u64 length)
+{
+  __u64 converted = 0;
+
+#pragma clang loop unroll(full)
+  for (int i = 0; i < length; i++)
+  {
+    converted = (converted << 8) | array[i];
+  }
+
+  return converted;
+}
+
+void convertToByteArray(__u64 value, unsigned char *array, __u64 length)
+{
+#pragma clang loop unroll(full)
+  for (int i = 0; i < length; i++)
+  {
+    array[length - i - 1] = (value >> (8 * i)) & 0xFF;
+  }
+}
+
+/**
+ * @brief create new pktid tlv struct
+ *
+ * @param nodeid
+ * @param counter
+ * @return __always_inline struct*
+ */
+static __always_inline struct sr6_pktid_tlv new_pktid_tlv(__u64 nodeid_u, __u64 counter_u)
+{
+  unsigned char nodeid[PKTID_TLV_NODEID_LEN];
+  unsigned char counter[PKTID_TLV_COUNTER_LEN];
+  convertToByteArray(nodeid_u, &nodeid, PKTID_TLV_NODEID_LEN);
+  convertToByteArray(counter_u, &counter, PKTID_TLV_COUNTER_LEN);
+  convertByteOrder(&nodeid, PKTID_TLV_NODEID_LEN);
+  convertByteOrder(&counter, PKTID_TLV_COUNTER_LEN);
+  struct sr6_pktid_tlv tlv = {
+      .type = (__u8)PKTID_TLV_TYPE,
+      .len = (__u8)(PKTID_TLV_NODEID_LEN + PKTID_TLV_COUNTER_LEN)};
+  __builtin_memcpy(tlv.node_id, &nodeid, PKTID_TLV_NODEID_LEN);
+  __builtin_memcpy(tlv.counter, &counter, PKTID_TLV_COUNTER_LEN);
+
+  bpf_debug("pktid addr=%u", &tlv);
+
+  return tlv;
+}
+
+static __always_inline unsigned long long countertoi(struct sr6_pktid_tlv *tlv, void *data_end)
+{
+  unsigned char counter[PKTID_TLV_COUNTER_LEN];
+  void *nodeid_off = (void *)tlv->node_id;
+  void *counter_off = nodeid_off + PKTID_TLV_NODEID_LEN;
+  __builtin_memcpy(&counter, counter_off, PKTID_TLV_COUNTER_LEN);
+  convertByteOrder(&counter, PKTID_TLV_COUNTER_LEN);
+  return convertToUint(&counter, PKTID_TLV_COUNTER_LEN);
+}
+
+static __always_inline unsigned long long nodeidtoi(struct sr6_pktid_tlv *tlv)
+{
+  unsigned char nodeid[PKTID_TLV_NODEID_LEN];
+  void *nodeid_off = (void *)tlv->node_id;
+  __builtin_memcpy(&nodeid, nodeid_off, PKTID_TLV_NODEID_LEN);
+  convertByteOrder(&nodeid, PKTID_TLV_NODEID_LEN);
+  return convertToUint(&nodeid, PKTID_TLV_NODEID_LEN);
+}
 
 /**
  * @brief parse Segment Routing Header (SRH)
@@ -243,7 +290,7 @@ static __always_inline bool update_pkt_len(struct ipv6hdr *ipv6, struct ipv6_sr_
  * @param pktid
  * @return __always_inline
  */
-static __always_inline bool push_pktidtlv_xdp(struct xdp_md *ctx, int nodeid, int counter)
+static __always_inline bool push_pktidtlv_xdp(struct xdp_md *ctx, __u64 nodeid, __u64 counter)
 {
   struct sr6_pktid_tlv pktid_tlv = new_pktid_tlv(nodeid, counter);
 
@@ -252,7 +299,7 @@ static __always_inline bool push_pktidtlv_xdp(struct xdp_md *ctx, int nodeid, in
   {
     return false;
   }
-
+  // reset data pointer and data_end pointer
   void *data_end = (void *)(long)ctx->data_end;
   void *data = (void *)(long)ctx->data;
 
@@ -265,7 +312,6 @@ static __always_inline bool push_pktidtlv_xdp(struct xdp_md *ctx, int nodeid, in
     return false;
   }
   __builtin_memcpy(&tmp_eth, old_eth, sizeof(*old_eth));
-  // __builtin_memcpy(new_eth, &tmp_eth, sizeof(tmp_eth));
 
   // IPv6 Header
   struct ipv6hdr *new_ipv6 = (void *)new_eth + sizeof(*new_eth);
@@ -276,7 +322,6 @@ static __always_inline bool push_pktidtlv_xdp(struct xdp_md *ctx, int nodeid, in
     return false;
   }
   __builtin_memcpy(&tmp_ipv6, old_ipv6, sizeof(tmp_ipv6));
-  // __builtin_memcpy(new_ipv6, &tmp_ipv6, sizeof(*new_ipv6));
 
   // SRH
   struct ipv6_sr_hdr *new_srh = (void *)new_ipv6 + sizeof(*new_ipv6);
@@ -288,7 +333,6 @@ static __always_inline bool push_pktidtlv_xdp(struct xdp_md *ctx, int nodeid, in
     return false;
   }
   __builtin_memcpy(&tmp_srh, old_srh, sizeof(tmp_srh));
-  // __builtin_memcpy(new_srh, &tmp_srh, sizeof(*new_srh));
 
   // New TLV space
   struct sr6_pktid_tlv *new_pktid_tlv = (void *)new_srh + sizeof(*new_srh) + segments_size;
@@ -296,7 +340,6 @@ static __always_inline bool push_pktidtlv_xdp(struct xdp_md *ctx, int nodeid, in
   {
     return false;
   }
-  // __builtin_memcpy(new_pktid_tlv, pktid_tlv, sizeof(pktid_tlv));
 
   __builtin_memcpy(new_eth, &tmp_eth, sizeof(tmp_eth));
   __builtin_memcpy(new_ipv6, &tmp_ipv6, sizeof(*new_ipv6));
@@ -329,7 +372,7 @@ static __always_inline bool push_pktidtlv_xdp(struct xdp_md *ctx, int nodeid, in
   return false;
 }
 
-static __always_inline bool push_pktidtlv_skb(struct __sk_buff *skb, int tlv_off, int nodeid, int counter)
+static __always_inline bool push_pktidtlv_skb(struct __sk_buff *skb, int tlv_off, __u64 nodeid, __u64 counter)
 {
   void *data_end = (void *)(long)skb->data_end;
   void *data = (void *)(long)skb->data;
@@ -398,13 +441,6 @@ static __always_inline bool push_pktidtlv_skb(struct __sk_buff *skb, int tlv_off
   }
   __builtin_memcpy(new_pktid_tlv, &pktid_tlv, sizeof(pktid_tlv));
 
-  // unsigned int offset = sizeof(*eth) + sizeof(*ipv6) + sizeof(*new_srh);
-  // err = bpf_skb_store_bytes(skb, offset, &pktid_tlv, sizeof(pktid_tlv), 0);
-  // if(err != 0){
-  //   bpf_debug("bpf_skb_store_bytes: ERROR.");
-  //   return false;
-  // }
-
   // chage length fields
   if (update_pkt_len(ipv6, new_srh, sizeof(*new_pktid_tlv)))
   {
@@ -440,6 +476,10 @@ static __always_inline long perf_event(void *ctx, __u64 packet_size, unsigned lo
   return bpf_perf_event_output(ctx, &perf_map, flags, &evt, sizeof(evt));
 }
 
+/* ---------------------------------------- *
+ * Entry Point
+ * ---------------------------------------- */
+
 // Ingress Prog
 SEC("xdp")
 int ingress(struct xdp_md *ctx)
@@ -465,23 +505,25 @@ int ingress(struct xdp_md *ctx)
   if (tlv)
   {
     bpf_trace("Ingress: PktId TLV Packet");
-    // Perf Event
-
-    unsigned long long pktid = (nodeidtoi(tlv) << (PKTID_TLV_COUNTER_LEN * 8)) + countertoi(tlv, data_end);
-    perf_event(ctx, packet_size, pktid, 1);
+    if ((void *)tlv + PKTID_TLV_NODEID_LEN + PKTID_TLV_COUNTER_LEN <= data_end)
+    {
+      // Perf Event
+      unsigned long long pktid = (nodeidtoi(tlv) << (PKTID_TLV_COUNTER_LEN * 8)) + countertoi(tlv, data_end);
+      perf_event(ctx, packet_size, pktid, 1);
+    }
   }
   else
   {
     // PKTID 付与
-    __u32 *node_id = bpf_map_lookup_elem(&config_map, &node_id_index);
-    // __u32 node_id = 1;
+    __u64 *node_id = bpf_map_lookup_elem(&config_map, &node_id_index);
+
     if (node_id == NULL)
     {
       bpf_warn("Ingress: Node id is not found in Map.");
       return XDP_PASS;
     }
-    __u32 *count = bpf_map_lookup_elem(&counter_map, &counter_index);
-    // __u32 count = 1;
+    __u64 *count = bpf_map_lookup_elem(&counter_map, &counter_index);
+
     if (count == NULL)
     {
       bpf_warn("Ingress: Counter is not found in Map.");
@@ -535,14 +577,14 @@ int egress(struct __sk_buff *skb)
   else
   {
     // PKTID 付与
-    __u32 *node_id = bpf_map_lookup_elem(&config_map, &node_id_index);
+    __u64 *node_id = bpf_map_lookup_elem(&config_map, &node_id_index);
     if (node_id == NULL)
     {
       bpf_warn("Egress: Node id is not found in Map.");
       return TC_ACT_OK;
     }
 
-    __u32 *counter = bpf_map_lookup_elem(&config_map, &node_id_index);
+    __u64 *counter = bpf_map_lookup_elem(&config_map, &node_id_index);
     if (counter == NULL)
     {
       bpf_warn("Egress: Counter is not found in Map.");
