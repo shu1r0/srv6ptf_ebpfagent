@@ -8,10 +8,10 @@ import (
 	"net"
 	"sync"
 
-	"github.com/shu1r0/srv6tracing_ebpfagent/pkg/api"
-	"github.com/shu1r0/srv6tracing_ebpfagent/pkg/utils"
+	"github.com/shu1r0/srv6ptf_ebpfagent/pkg/api"
+	"github.com/shu1r0/srv6ptf_ebpfagent/pkg/utils"
 
-	"github.com/shu1r0/srv6tracing_ebpfagent/pkg/ebpf"
+	"github.com/shu1r0/srv6ptf_ebpfagent/pkg/ebpf"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 )

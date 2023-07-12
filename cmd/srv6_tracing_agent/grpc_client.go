@@ -4,7 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/shu1r0/srv6tracing_ebpfagent/pkg/api"
+	"github.com/shu1r0/srv6ptf_ebpfagent/pkg/api"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"

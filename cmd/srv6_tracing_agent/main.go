@@ -2,11 +2,11 @@ package main
 
 import (
 	"flag"
-	"github.com/shu1r0/srv6tracing_ebpfagent/internal/log_utils"
+	"github.com/shu1r0/srv6ptf_ebpfagent/internal/log_utils"
 	"os"
 	"os/signal"
 
-	"github.com/shu1r0/srv6tracing_ebpfagent/pkg/agent"
+	"github.com/shu1r0/srv6ptf_ebpfagent/pkg/agent"
 	log "github.com/sirupsen/logrus"
 )
 

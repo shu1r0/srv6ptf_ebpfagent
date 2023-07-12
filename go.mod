@@ -1,4 +1,4 @@
-module github.com/shu1r0/srv6tracing_ebpfagent
+module github.com/shu1r0/srv6ptf_ebpfagent
 
 go 1.17
 

@@ -10,9 +10,9 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 
-	"github.com/shu1r0/srv6tracing_ebpfagent/internal/log_utils"
+	"github.com/shu1r0/srv6ptf_ebpfagent/internal/log_utils"
 
-	"github.com/shu1r0/srv6tracing_ebpfagent/pkg/ebpf"
+	"github.com/shu1r0/srv6ptf_ebpfagent/pkg/ebpf"
 	log "github.com/sirupsen/logrus"
 )
 
