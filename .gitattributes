@@ -1,2 +1,4 @@
-bpf/bpf_helper_defs.h linguist-vendored
-bpf/bpf_helpers.h linguist-vendored
+
+# ref: https://github.com/github-linguist/linguist/blob/master/docs/overrides.md#vendored-code
+bpf/bpf_helper_defs.h -linguist-vendored
+bpf/bpf_helpers.h -linguist-vendored
