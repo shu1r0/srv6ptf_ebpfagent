@@ -119,13 +119,16 @@ func (cp *TracingAgent) GetPacketInfoStream(req *api.PacketInfoStreamRequest, st
 func (cp *TracingAgent) pkti2msg(pkt *ebpf.PacketInfo) *api.PacketInfo {
 
 	msg := &api.PacketInfo{
-		NodeId:    cp.NodeId,
-		Timestamp: float64(pkt.MonotoricTimestamp)*math.Pow(10, -10) + cp.diffWallMono,
+		NodeId:      cp.NodeId,
+		Timestamp:   float64(pkt.MonotoricTimestamp)*math.Pow(10, -10) + cp.diffWallMono,
+		PktidExthdr: api.PktIdExtHdr_EXTHDR_ROUTING,
 	}
 	if pkt.Hookpoint == 1 || pkt.Hookpoint == 2 {
 		msg.Metadata = &api.PacketInfo_EbpfInfo{EbpfInfo: &api.EBPFInfo{Hookpoint: api.EBPFHook_XDP}}
+		msg.PacketProtocol = api.PacketProtocol_PROTOCOL_ETH
 	} else if pkt.Hookpoint == 3 || pkt.Hookpoint == 4 {
 		msg.Metadata = &api.PacketInfo_EbpfInfo{EbpfInfo: &api.EBPFInfo{Hookpoint: api.EBPFHook_TC_EGRESS}}
+		msg.PacketProtocol = api.PacketProtocol_PROTOCOL_ETH
 	}
 	if pkt.Hookpoint%2 == 0 {
 		msg.Data = &api.PacketInfo_Packet{Packet: pkt.Pkt}
