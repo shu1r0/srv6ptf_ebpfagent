@@ -128,8 +128,6 @@ static __always_inline struct sr6_pktid_tlv new_pktid_tlv(__u64 nodeid_u, __u64 
   unsigned char counter[PKTID_TLV_COUNTER_LEN];
   convertToByteArray(nodeid_u, &nodeid, PKTID_TLV_NODEID_LEN);
   convertToByteArray(counter_u, &counter, PKTID_TLV_COUNTER_LEN);
-  convertByteOrder(&nodeid, PKTID_TLV_NODEID_LEN);
-  convertByteOrder(&counter, PKTID_TLV_COUNTER_LEN);
   struct sr6_pktid_tlv tlv = {
       .type = (__u8)PKTID_TLV_TYPE,
       .len = (__u8)(PKTID_TLV_NODEID_LEN + PKTID_TLV_COUNTER_LEN)};
@@ -147,7 +145,6 @@ static __always_inline unsigned long long countertoi(struct sr6_pktid_tlv *tlv, 
   void *nodeid_off = (void *)tlv->node_id;
   void *counter_off = nodeid_off + PKTID_TLV_NODEID_LEN;
   __builtin_memcpy(&counter, counter_off, PKTID_TLV_COUNTER_LEN);
-  convertByteOrder(&counter, PKTID_TLV_COUNTER_LEN);
   return convertToUint(&counter, PKTID_TLV_COUNTER_LEN);
 }
 
@@ -156,7 +153,6 @@ static __always_inline unsigned long long nodeidtoi(struct sr6_pktid_tlv *tlv)
   unsigned char nodeid[PKTID_TLV_NODEID_LEN];
   void *nodeid_off = (void *)tlv->node_id;
   __builtin_memcpy(&nodeid, nodeid_off, PKTID_TLV_NODEID_LEN);
-  convertByteOrder(&nodeid, PKTID_TLV_NODEID_LEN);
   return convertToUint(&nodeid, PKTID_TLV_NODEID_LEN);
 }
 
