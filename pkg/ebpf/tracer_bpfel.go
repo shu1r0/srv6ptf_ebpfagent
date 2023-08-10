@@ -60,8 +60,9 @@ type tracerSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type tracerProgramSpecs struct {
-	Egress  *ebpf.ProgramSpec `ebpf:"egress"`
-	Ingress *ebpf.ProgramSpec `ebpf:"ingress"`
+	Egress      *ebpf.ProgramSpec `ebpf:"egress"`
+	EndInsertId *ebpf.ProgramSpec `ebpf:"end_insert_id"`
+	Ingress     *ebpf.ProgramSpec `ebpf:"ingress"`
 }
 
 // tracerMapSpecs contains maps before they are loaded into the kernel.
@@ -109,13 +110,15 @@ func (m *tracerMaps) Close() error {
 //
 // It can be passed to loadTracerObjects or ebpf.CollectionSpec.LoadAndAssign.
 type tracerPrograms struct {
-	Egress  *ebpf.Program `ebpf:"egress"`
-	Ingress *ebpf.Program `ebpf:"ingress"`
+	Egress      *ebpf.Program `ebpf:"egress"`
+	EndInsertId *ebpf.Program `ebpf:"end_insert_id"`
+	Ingress     *ebpf.Program `ebpf:"ingress"`
 }
 
 func (p *tracerPrograms) Close() error {
 	return _TracerClose(
 		p.Egress,
+		p.EndInsertId,
 		p.Ingress,
 	)
 }
