@@ -4,6 +4,7 @@
 
 /private
 .vagrant
+*.pcap
 
 main
 

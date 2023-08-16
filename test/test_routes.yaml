@@ -2,6 +2,6 @@ routes:
   add:
     end_insert_id:
       - destination: "2001:db8:10::3/128"
-        link: "ns2_veth1"
+        link: "ns2_veth2"
     #  - destination: "2001:db8:20::1/128"
     #    link: "ns2_veth2"

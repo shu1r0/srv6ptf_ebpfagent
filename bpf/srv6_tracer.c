@@ -476,7 +476,7 @@ static __always_inline bool push_pktidtlv_lwt_seg6(struct __sk_buff *skb, __u64 
   }
 
   // store pktid_tlv
-  err = bpf_lwt_seg6_store_bytes(skb, tlv_offset, (void *)&pktid_tlv, sizeof(struct sr6_pktid_tlv));
+  err = bpf_lwt_seg6_store_bytes(skb, tlv_offset, &pktid_tlv, sizeof(struct sr6_pktid_tlv));
   if (err != 0)
   {
     bpf_debug("bpf_lwt_seg6_store_bytes error.");
@@ -695,14 +695,6 @@ int end_insert_id(struct __sk_buff *skb)
     bpf_debug("end_insert_id: PktId TLV added to SRH.");
   }
 
-  // int table_id = 0;
-  // // End bevavior
-  // if (bpf_lwt_seg6_action(skb, SEG6_LOCAL_ACTION_END_T, &table_id, sizeof(table_id)) != 0)
-  // {
-  //   bpf_debug("end_insert_id: bpf_lwt_seg6_action error.");
-  // }
-
-  // return BPF_REDIRECT;
   return BPF_OK;
 }
 

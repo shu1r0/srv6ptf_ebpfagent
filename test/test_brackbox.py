@@ -12,7 +12,7 @@ class TestSPacket(TestCase):
         results = []
         print("Send packets ...")
         for _ in range(3):
-            result = ping1(dst="2001:db8:20::1", segs=["2001:db8:10::3"], hlim=1, return_pkt=True)
+            result = ping1(dst="2001:db8:20::1", segs=["2001:db8:10::3", "2001:db8:10::2"], hlim=1, return_pkt=True)
             if result:
                 results.append(result)
         
@@ -28,7 +28,7 @@ class TestSPacket(TestCase):
         
         print("send packetid")
         tlv = new_srh_tlv(type=124, value='\x00\x01\x00\x00\x00\x01')
-        result = ping1(dst="2001:db8:20::1", segs=["2001:db8:10::2"], hlim=1, srh_tlvs=[tlv], return_pkt=True)
+        result = ping1(dst="2001:db8:20::1", segs=["2001:db8:10::3", "2001:db8:10::2"], hlim=1, srh_tlvs=[tlv], return_pkt=True)
         self.assertEqual("TimeExceeded", result["msg"])
         result["recv_pkt"].show()
         
