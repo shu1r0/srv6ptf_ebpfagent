@@ -11,6 +11,8 @@ class TestEndBPF(TestCase):
     def test_srv6_ping(self):
         results = []
         print("Send packets ...")
+        result = ping1(dst="2001:db8:10::3", hlim=1, return_pkt=True)
+        print(result)
         for _ in range(3):
             result = ping1(dst="2001:db8:20::1", segs=["2001:db8:10::3"], hlim=1, return_pkt=True)
             if result:
