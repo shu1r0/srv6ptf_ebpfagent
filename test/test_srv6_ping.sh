@@ -39,9 +39,9 @@ sudo ip netns exec ns2 sudo ping -c 3 2001:db8:20::1
 
 # start agent
 sudo ip netns exec ns2 sudo ../cmd/srv6_tracing_agent/main -no-tc-xdp -conf-file ./test_routes.yaml -log-level trace &
-sudo ip netns exec ns2 tcpdump -i ns2_veth2 -w ns2_veth2.pcap &
-sudo ip netns exec ns2 tcpdump -i lo -w lo.pcap &
-sudo ip netns exec ns2 tcpdump -i ns2_veth1 -w ns2_veth1.pcap &
+# sudo ip netns exec ns2 tcpdump -i ns2_veth2 -w ns2_veth2.pcap &
+# sudo ip netns exec ns2 tcpdump -i lo -w lo.pcap &
+# sudo ip netns exec ns2 tcpdump -i ns2_veth1 -w ns2_veth1.pcap &
 
 # start client
 sudo ip netns exec ns2 ../cmd/srv6_tracing_agent/grpc_client &
