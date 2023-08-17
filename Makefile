@@ -26,6 +26,9 @@ build:
 
 
 install:
+	git submodule init
+	git submodule sync
+	git submodule update
 	sudo mkdir -p /var/log/srv6_ptf/
 	$(MAKE) build
 	sudo cp cmd/srv6_tracing_agent/main /usr/local/bin/srv6_ebpfagent

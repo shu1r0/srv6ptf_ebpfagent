@@ -18,13 +18,14 @@ import (
 
 type TracingAgent struct {
 	api.UnimplementedPacketCollectServiceServer
-	Server       *grpc.Server
-	Ip           string
-	Port         int
-	InfoChan     chan ebpf.PacketInfo
-	Dp           *ebpf.TracingDataPlane
-	NodeId       uint32
-	diffWallMono float64
+	Server        *grpc.Server
+	Ip            string
+	Port          int
+	InfoChan      chan ebpf.PacketInfo
+	Dp            *ebpf.TracingDataPlane
+	NodeId        uint32
+	diffWallMono  float64
+	AttachOptions *ebpf.AttachAllOptions
 }
 
 func NewTracingAgent(ip string, port int) (*TracingAgent, error) {
@@ -34,7 +35,7 @@ func NewTracingAgent(ip string, port int) (*TracingAgent, error) {
 		return nil, fmt.Errorf("Tracking Data Plane Create: %s", err)
 	}
 
-	return &TracingAgent{Server: server, Ip: ip, Port: port, Dp: dp, diffWallMono: utils.GetDiffWallMono()}, nil
+	return &TracingAgent{Server: server, Ip: ip, Port: port, Dp: dp, diffWallMono: utils.GetDiffWallMono(), AttachOptions: nil}, nil
 }
 
 func (cp *TracingAgent) Start() {
@@ -53,7 +54,7 @@ func (cp *TracingAgent) Start() {
 func (cp *TracingAgent) SetDp(nodeid uint32) {
 	log.Info("Set eBPF program.")
 	cp.NodeId = nodeid
-	if err := cp.Dp.AttachAll(); err != nil {
+	if err := cp.Dp.AttachAll(cp.AttachOptions); err != nil {
 		log.Fatalf("Attach All Error: %s", err)
 	}
 	//TODO: NodeId size
@@ -129,10 +130,22 @@ func (cp *TracingAgent) pkti2msg(pkt *ebpf.PacketInfo) *api.PacketInfo {
 	} else if pkt.Hookpoint == 3 || pkt.Hookpoint == 4 {
 		msg.Metadata = &api.PacketInfo_EbpfInfo{EbpfInfo: &api.EBPFInfo{Hookpoint: api.EBPFHook_TC_EGRESS}}
 		msg.PacketProtocol = api.PacketProtocol_PROTOCOL_ETH
+	} else if pkt.Hookpoint == 5 || pkt.Hookpoint == 6 {
+		msg.Metadata = &api.PacketInfo_EbpfInfo{EbpfInfo: &api.EBPFInfo{Hookpoint: api.EBPFHook_LWT_IN}}
+		msg.PacketProtocol = api.PacketProtocol_PROTOCOL_IPV6
+	} else if pkt.Hookpoint == 7 || pkt.Hookpoint == 8 {
+		msg.Metadata = &api.PacketInfo_EbpfInfo{EbpfInfo: &api.EBPFInfo{Hookpoint: api.EBPFHook_LWT_XMIT}}
+		msg.PacketProtocol = api.PacketProtocol_PROTOCOL_IPV6
+	} else if pkt.Hookpoint == 9 || pkt.Hookpoint == 10 {
+		msg.Metadata = &api.PacketInfo_EbpfInfo{EbpfInfo: &api.EBPFInfo{Hookpoint: api.EBPFHook_LWT_OUT}}
+		msg.PacketProtocol = api.PacketProtocol_PROTOCOL_IPV6
+	} else if pkt.Hookpoint == 11 || pkt.Hookpoint == 12 {
+		msg.Metadata = &api.PacketInfo_EbpfInfo{EbpfInfo: &api.EBPFInfo{Hookpoint: api.EBPFHook_LWT_SEG6LOCAL}}
+		msg.PacketProtocol = api.PacketProtocol_PROTOCOL_IPV6
 	}
-	if pkt.Hookpoint%2 == 0 {
+	if pkt.Hookpoint%2 == 0 { // push id
 		msg.Data = &api.PacketInfo_Packet{Packet: pkt.Pkt}
-	} else {
+	} else { // get id
 		msg.Data = &api.PacketInfo_PacketId{PacketId: uint64(pkt.PktId)}
 	}
 

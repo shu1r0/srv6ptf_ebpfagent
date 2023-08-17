@@ -4,3 +4,7 @@
 [submodule "nfagent"]
 	path = nfagent
 	url = https://github.com/shu1r0/srv6ptf_nfagent.git
+[submodule "netlink"]
+	path = netlink
+	url = https://github.com/shu1r0/netlink.git
+	branch = feature/seg6local_endbpf

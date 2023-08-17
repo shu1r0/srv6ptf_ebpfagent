@@ -37,7 +37,7 @@ func main() {
 	}
 	defer dp.Close()
 
-	if err := dp.AttachAll(); err != nil {
+	if err := dp.AttachAll(nil); err != nil {
 		log.Panicf("Attach All Error: %s", err)
 	}
 	defer dp.DettachAll()

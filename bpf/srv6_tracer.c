@@ -30,7 +30,7 @@
 // Perf Map
 struct bpf_map_def SEC("maps") perf_map = {
     .type = BPF_MAP_TYPE_PERF_EVENT_ARRAY,
-    .max_entries = 128,
+    .max_entries = 256,
 };
 
 // PerfEvent item
@@ -115,13 +115,6 @@ void convertToByteArray(__u64 value, unsigned char *array, __u64 length)
   }
 }
 
-/**
- * @brief create new pktid tlv struct
- *
- * @param nodeid
- * @param counter
- * @return __always_inline struct*
- */
 static __always_inline struct sr6_pktid_tlv new_pktid_tlv(__u64 nodeid_u, __u64 counter_u)
 {
   unsigned char nodeid[PKTID_TLV_NODEID_LEN];
@@ -156,13 +149,6 @@ static __always_inline unsigned long long nodeidtoi(struct sr6_pktid_tlv *tlv)
   return convertToUint(&nodeid, PKTID_TLV_NODEID_LEN);
 }
 
-/**
- * @brief parse Segment Routing Header (SRH)
- *
- * @param data
- * @param data_end
- * @return __always_inline struct*
- */
 static __always_inline struct ipv6_sr_hdr *get_srh(void *data, void *data_end)
 {
   struct ethhdr *eth;
@@ -214,12 +200,33 @@ static __always_inline struct ipv6_sr_hdr *get_srh(void *data, void *data_end)
   return NULL;
 }
 
-/**
- * @brief Get the pktidtlv object
- *
- * @param srh
- * @return __always_inline struct*
- */
+static __always_inline struct ipv6_sr_hdr *get_srh_lwt(void *data, void *data_end)
+{
+  struct iphdr *ip;
+  struct ipv6hdr *ipv6;
+  struct ipv6_sr_hdr *srh;
+
+  if (data < data_end)
+  {
+    ipv6 = data;
+    if ((void *)ipv6 + sizeof(*ipv6) > data_end)
+    {
+      return NULL;
+    }
+
+    if (ipv6->nexthdr == IPPROTO_ROUTING)
+    {
+      srh = data + sizeof(*ipv6);
+      if ((void *)srh + sizeof(*srh) > data_end)
+      {
+        return NULL;
+      }
+      return srh;
+    }
+  }
+  return NULL;
+}
+
 static __always_inline struct sr6_pktid_tlv *get_pktidtlv(struct ipv6_sr_hdr *srh, void *data, void *data_end)
 {
   // SRH length including header (bytes)
@@ -278,14 +285,6 @@ static __always_inline bool update_pkt_len(struct ipv6hdr *ipv6, struct ipv6_sr_
   return true;
 }
 
-/**
- * @brief push the pktidTLV
- *
- * @param data
- * @param data_end
- * @param pktid
- * @return __always_inline
- */
 static __always_inline bool push_pktidtlv_xdp(struct xdp_md *ctx, __u64 nodeid, __u64 counter)
 {
   struct sr6_pktid_tlv pktid_tlv = new_pktid_tlv(nodeid, counter);
@@ -368,7 +367,7 @@ static __always_inline bool push_pktidtlv_xdp(struct xdp_md *ctx, __u64 nodeid, 
   return false;
 }
 
-static __always_inline bool push_pktidtlv_skb(struct __sk_buff *skb, int tlv_off, __u64 nodeid, __u64 counter)
+static __always_inline bool push_pktidtlv_skb(struct __sk_buff *skb, __u64 nodeid, __u64 counter)
 {
   void *data_end = (void *)(long)skb->data_end;
   void *data = (void *)(long)skb->data;
@@ -430,15 +429,15 @@ static __always_inline bool push_pktidtlv_skb(struct __sk_buff *skb, int tlv_off
 
   // set new Pktid TLV
   unsigned long segments_size = (new_srh->first_segment + 1) * sizeof(struct in6_addr);
-  struct sr6_pktid_tlv *new_pktid_tlv = (void *)new_srh + sizeof(*new_srh) + segments_size;
-  if ((void *)new_pktid_tlv + sizeof(*new_pktid_tlv) > data_end)
+  struct sr6_pktid_tlv *pktid_tlv_room = (void *)new_srh + sizeof(*new_srh) + segments_size;
+  if ((void *)pktid_tlv_room + sizeof(*pktid_tlv_room) > data_end)
   {
     return false;
   }
-  __builtin_memcpy(new_pktid_tlv, &pktid_tlv, sizeof(pktid_tlv));
+  __builtin_memcpy(pktid_tlv_room, &pktid_tlv, sizeof(pktid_tlv));
 
   // chage length fields
-  if (update_pkt_len(ipv6, new_srh, sizeof(*new_pktid_tlv)))
+  if (update_pkt_len(ipv6, new_srh, sizeof(*pktid_tlv_room)))
   {
     return true;
   }
@@ -446,15 +445,43 @@ static __always_inline bool push_pktidtlv_skb(struct __sk_buff *skb, int tlv_off
   return false;
 }
 
-/**
- * @brief perf_event
- *
- * @param ctx
- * @param packet_size
- * @param pktid
- * @param hookpoint
- * @return __always_inline
- */
+static __always_inline bool push_pktidtlv_lwt_seg6(struct __sk_buff *skb, __u64 nodeid, __u64 counter)
+{
+  void *data_end = (void *)(long)skb->data_end;
+  void *data = (void *)(long)skb->data;
+
+  struct ipv6_sr_hdr *srh = get_srh_lwt(data, data_end);
+  if (srh == NULL)
+  {
+    bpf_trace("push_pktidtlv_lwt_seg6: No SRv6 Packet.");
+    return false;
+  }
+  unsigned int tlv_offset = ((void *)srh - data) + sizeof(*srh) + (srh->first_segment + 1) * sizeof(struct in6_addr);
+
+  // new pktid_tlv
+  struct sr6_pktid_tlv pktid_tlv = new_pktid_tlv(nodeid, counter);
+
+  int err;
+
+  // adjust srh
+  err = bpf_lwt_seg6_adjust_srh(skb, tlv_offset, sizeof(struct sr6_pktid_tlv));
+  if (err != 0)
+  {
+    bpf_debug("bpf_lwt_seg6_adjust_srh error.");
+    return false;
+  }
+
+  // store pktid_tlv
+  err = bpf_lwt_seg6_store_bytes(skb, tlv_offset, &pktid_tlv, sizeof(struct sr6_pktid_tlv));
+  if (err != 0)
+  {
+    bpf_debug("bpf_lwt_seg6_store_bytes error.");
+    return false;
+  }
+
+  return true;
+}
+
 static __always_inline long perf_event(void *ctx, __u64 packet_size, unsigned long long pktid, __u8 hookpoint)
 {
   struct perf_event_item evt = {
@@ -495,7 +522,6 @@ int ingress(struct xdp_md *ctx)
     return XDP_PASS;
   }
   bpf_trace("Ingress: Get SRv6 Packet.");
-  // perf_event(ctx, packet_size, 1, 1);
 
   struct sr6_pktid_tlv *tlv = get_pktidtlv(srh, data, data_end);
   if (tlv)
@@ -505,7 +531,7 @@ int ingress(struct xdp_md *ctx)
     {
       // Perf Event
       unsigned long long pktid = (nodeidtoi(tlv) << (PKTID_TLV_COUNTER_LEN * 8)) + countertoi(tlv, data_end);
-      perf_event(ctx, packet_size, pktid, 1);
+      perf_event(ctx, packet_size, pktid, HOOK_XDP_INGRESS_GET);
     }
   }
   else
@@ -531,7 +557,7 @@ int ingress(struct xdp_md *ctx)
       (*count)++;
       // Perf Event
       unsigned long long pktid = ((unsigned long long)*node_id << (PKTID_TLV_COUNTER_LEN * 8)) | (unsigned long long)*count;
-      perf_event(ctx, packet_size, pktid, 2);
+      perf_event(ctx, packet_size, pktid, HOOK_XDP_INGRESS_PUSH);
     }
     else
     {
@@ -549,7 +575,7 @@ int ingress(struct xdp_md *ctx)
 SEC("tc")
 int egress(struct __sk_buff *skb)
 {
-  bpf_trace("Engress: Enter packet");
+  bpf_trace("Egress: Enter packet");
   void *data_end = (void *)(long)skb->data_end;
   void *data = (void *)(long)skb->data;
   __u64 packet_size = data_end - data;
@@ -587,13 +613,13 @@ int egress(struct __sk_buff *skb)
       return TC_ACT_OK;
     }
 
-    int tlv_off = (void *)(srh + sizeof(*srh)) - data;
-    if (push_pktidtlv_skb(skb, tlv_off, *node_id, *counter))
+    if (push_pktidtlv_skb(skb, *node_id, *counter))
     {
       (*counter)++;
+      packet_size = data_end - data;
       // Perf Event
       unsigned long long pktid = ((unsigned long long)*node_id << (PKTID_TLV_COUNTER_LEN * 8)) | (unsigned long long)*counter;
-      perf_event(skb, packet_size, pktid, 4);
+      perf_event(skb, packet_size, pktid, HOOK_TC_EGRESS_PUSH);
     }
     else
     {
@@ -605,6 +631,67 @@ int egress(struct __sk_buff *skb)
   }
 
   return TC_ACT_OK;
+}
+
+SEC("lwt_seg6local/end_insert_id")
+int end_insert_id(struct __sk_buff *skb)
+{
+  bpf_trace("end_insert_id: Enter packet");
+  void *data_end = (void *)(long)skb->data_end;
+  void *data = (void *)(long)skb->data;
+  __u64 packet_size = data_end - data;
+
+  __u32 counter_index = COUNTER_INDEX;
+  __u32 node_id_index = NODEID_INDEX;
+
+  struct ipv6_sr_hdr *srh = get_srh_lwt(data, data_end);
+  if (srh == NULL)
+  {
+    bpf_trace("end_insert_id: No SRv6 Packet.");
+    return BPF_OK;
+  }
+  bpf_trace("end_insert_id: Get SRv6 Packet.");
+
+  struct sr6_pktid_tlv *tlv = get_pktidtlv(srh, data, data_end);
+  if (tlv)
+  {
+    bpf_trace("end_insert_id: PktId TLV Packet.");
+  }
+  else
+  {
+    // Asigning PKTID
+    __u64 *node_id = bpf_map_lookup_elem(&config_map, &node_id_index);
+    if (node_id == NULL)
+    {
+      bpf_warn("end_insert_id: Node id is not found in Map.");
+      return BPF_OK;
+    }
+
+    __u64 *counter = bpf_map_lookup_elem(&config_map, &node_id_index);
+    if (counter == NULL)
+    {
+      bpf_warn("end_insert_id: Counter is not found in Map.");
+      return BPF_OK;
+    }
+
+    if (push_pktidtlv_lwt_seg6(skb, *node_id, *counter))
+    {
+      packet_size = data_end - data;
+      // Perf Event
+      unsigned long long pktid = ((unsigned long long)*node_id << (PKTID_TLV_COUNTER_LEN * 8)) | (unsigned long long)*counter;
+      perf_event(skb, packet_size, pktid, HOOK_LWT_SEG6LOCAL_PUSH);
+      (*counter)++;
+    }
+    else
+    {
+      bpf_warn("end_insert_id: Adding PktId TLV Error.");
+      return BPF_OK;
+    }
+
+    bpf_debug("end_insert_id: PktId TLV added to SRH.");
+  }
+
+  return BPF_OK;
 }
 
 char _license[] SEC("license") = "GPL";

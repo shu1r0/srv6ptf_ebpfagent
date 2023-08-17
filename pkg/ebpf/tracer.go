@@ -5,6 +5,8 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"github.com/vishvananda/netlink/nl"
+	"net"
 
 	log "github.com/sirupsen/logrus"
 
@@ -20,14 +22,26 @@ type PerfEventItem struct {
 	Hookpoint          uint8
 }
 
+type Seg6LocalEndInsertIdRoute struct {
+	Destination string `yaml:"destination"`
+	Link        string `yaml:"link"`
+}
+
 var PerfEventItemSize = 17
 
 type TracingDataPlane struct {
 	tracerObjects
+	InIfaces           []string
+	EIfaces            []string
+	Efilters           []*netlink.BpfFilter
+	Eqdiscs            []*netlink.GenericQdisc
+	EndIIDRoutesConfig []Seg6LocalEndInsertIdRoute
+	AddedRoutes        []*netlink.Route
+}
+
+type AttachAllOptions struct {
 	InIfaces []string
 	EIfaces  []string
-	Efilters []*netlink.BpfFilter
-	Eqdiscs  []*netlink.GenericQdisc
 }
 
 func NewTracingDataPlane(options *ebpf.CollectionOptions) (*TracingDataPlane, error) {
@@ -45,17 +59,36 @@ func NewTracingDataPlane(options *ebpf.CollectionOptions) (*TracingDataPlane, er
 	return dp, nil
 }
 
-func (obj *TracingDataPlane) AttachAll() error {
-	links, err := netlink.LinkList()
-	if err != nil {
-		return err
-	}
-	for _, l := range links {
-		iface := l.Attrs().Name
-		if err := obj.AttachIngress(iface); err != nil {
+func (obj *TracingDataPlane) AttachAll(options *AttachAllOptions) error {
+	if options == nil {
+		links, err := netlink.LinkList()
+		if err != nil {
 			return err
 		}
-		if err := obj.AttachEgress(iface); err != nil {
+		for _, l := range links {
+			iface := l.Attrs().Name
+			if err := obj.AttachIngress(iface); err != nil {
+				return err
+			}
+			if err := obj.AttachEgress(iface); err != nil {
+				return err
+			}
+		}
+	} else {
+		for _, i := range options.InIfaces {
+			if err := obj.AttachIngress(i); err != nil {
+				return err
+			}
+		}
+		for _, i := range options.EIfaces {
+			if err := obj.AttachEgress(i); err != nil {
+				return err
+			}
+		}
+	}
+
+	for _, r := range obj.EndIIDRoutesConfig {
+		if err := obj.AttachSeg6LocalEndInsertId(r.Destination, r.Link); err != nil {
 			return err
 		}
 	}
@@ -68,6 +101,9 @@ func (obj *TracingDataPlane) DettachAll() {
 		log.Fatal(err)
 	}
 	if err := obj.DettachEgresses(); err != nil {
+		log.Fatal(err)
+	}
+	if err := obj.DettachAllRoutes(); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -156,6 +192,42 @@ func (obj *TracingDataPlane) DettachEgresses() error {
 	for _, q := range obj.Eqdiscs {
 		if err := netlink.QdiscDel(q); err != nil {
 			return fmt.Errorf("Dettach Qdisc Error: %s", err)
+		}
+	}
+	return nil
+}
+
+func (obj *TracingDataPlane) AttachSeg6LocalEndInsertId(dst_s string, link string) error {
+	var flags_end_bpf [nl.SEG6_LOCAL_MAX]bool
+	flags_end_bpf[nl.SEG6_LOCAL_ACTION] = true
+	flags_end_bpf[nl.SEG6_LOCAL_BPF] = true
+	endBpfEncap := netlink.SEG6LocalEncap{Flags: flags_end_bpf, Action: nl.SEG6_LOCAL_ACTION_END_BPF}
+	if err := endBpfEncap.SetProg(obj.EndInsertId.FD(), "End.Insert.ID"); err != nil {
+		return err
+	}
+
+	_, dst, err := net.ParseCIDR(dst_s)
+	if err != nil {
+		return fmt.Errorf("parse cidr error : %s", err)
+	}
+	oif, err := netlink.LinkByName(link)
+	if err != nil {
+		return fmt.Errorf("link by name error : %s", err)
+	}
+	route := netlink.Route{LinkIndex: oif.Attrs().Index, Dst: dst, Encap: &endBpfEncap}
+	fmt.Println(route)
+	if err := netlink.RouteAdd(&route); err != nil {
+		return fmt.Errorf("route add error : %s", err)
+	}
+	obj.AddedRoutes = append(obj.AddedRoutes, &route)
+
+	return nil
+}
+
+func (obj *TracingDataPlane) DettachAllRoutes() error {
+	for _, r := range obj.AddedRoutes {
+		if err := netlink.RouteDel(r); err != nil {
+			return fmt.Errorf("delete route error: %s", err)
 		}
 	}
 	return nil
