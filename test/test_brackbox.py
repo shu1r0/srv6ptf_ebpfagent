@@ -33,3 +33,16 @@ class TestSPacket(TestCase):
         result["recv_pkt"].show()
         
         time.sleep(1)
+    
+    def test_large_ping(self):
+        results = []
+        print("Send Large packets ...")
+        result = ping1(dst="2001:db8:10::3", hlim=1, return_pkt=True, data_len=600)
+        print(result)
+        for _ in range(3):
+            result = ping1(dst="2001:db8:20::1", segs=["2001:db8:10::3"], hlim=1, return_pkt=True)
+            if result:
+                results.append(result)
+        
+        # echo reply
+        self.assertTrue(len(results) > 0)
