@@ -27,14 +27,6 @@
  * MAP
  * ---------------------------------------- */
 
-// Perf Map
-struct bpf_map_def SEC("maps") perf_map = {
-    .type = BPF_MAP_TYPE_PERF_EVENT_ARRAY,
-    .max_entries = 256,
-};
-
-// PerfEvent item
-//
 // Set `unused` to specify the type in bpf2go.
 // Optimization methods are different between C structures and Go structures.
 // When converting a structure, padding is performed, and the conversion may not be successful.
@@ -48,6 +40,14 @@ struct perf_event_item
 } __attribute__((packed));
 struct perf_event_item *unused_event __attribute__((unused));
 
+// Perf Map
+struct bpf_map_def SEC("maps") perf_map = {
+    .type = BPF_MAP_TYPE_PERF_EVENT_ARRAY,
+    .key_size = sizeof(int),
+    .value_size = 0,
+    .max_entries = 1024,
+};
+
 // Config Map
 // - 0: None
 // - 1: NodeId
@@ -56,7 +56,6 @@ struct bpf_map_def SEC("maps") config_map = {
     .key_size = sizeof(__u32),
     .value_size = sizeof(__u64),
     .max_entries = 32,
-    // .map_flags = 0,
 };
 
 // Counter Map
@@ -65,7 +64,6 @@ struct bpf_map_def SEC("maps") counter_map = {
     .key_size = sizeof(__u32),
     .value_size = sizeof(__u64),
     .max_entries = 32,
-    // .map_flags = 0,
 };
 
 /* ---------------------------------------- *
@@ -287,6 +285,7 @@ static __always_inline bool update_pkt_len(struct ipv6hdr *ipv6, struct ipv6_sr_
 
 static __always_inline bool push_pktidtlv_xdp(struct xdp_md *ctx, __u64 nodeid, __u64 counter)
 {
+  // new pktid tlv
   struct sr6_pktid_tlv pktid_tlv = new_pktid_tlv(nodeid, counter);
 
   // change packet size
@@ -298,7 +297,7 @@ static __always_inline bool push_pktidtlv_xdp(struct xdp_md *ctx, __u64 nodeid, 
   void *data_end = (void *)(long)ctx->data_end;
   void *data = (void *)(long)ctx->data;
 
-  // Ethernet
+  // Copy Ethernet
   struct ethhdr *new_eth = data;
   struct ethhdr *old_eth = data + sizeof(pktid_tlv);
   struct ethhdr tmp_eth;
@@ -308,7 +307,7 @@ static __always_inline bool push_pktidtlv_xdp(struct xdp_md *ctx, __u64 nodeid, 
   }
   __builtin_memcpy(&tmp_eth, old_eth, sizeof(*old_eth));
 
-  // IPv6 Header
+  // Copy IPv6 Header
   struct ipv6hdr *new_ipv6 = (void *)new_eth + sizeof(*new_eth);
   struct ipv6hdr *old_ipv6 = (void *)new_ipv6 + sizeof(pktid_tlv);
   struct ipv6hdr tmp_ipv6;
@@ -318,7 +317,7 @@ static __always_inline bool push_pktidtlv_xdp(struct xdp_md *ctx, __u64 nodeid, 
   }
   __builtin_memcpy(&tmp_ipv6, old_ipv6, sizeof(tmp_ipv6));
 
-  // SRH
+  // Copy SRH
   struct ipv6_sr_hdr *new_srh = (void *)new_ipv6 + sizeof(*new_ipv6);
   struct ipv6_sr_hdr *old_srh = (void *)new_srh + sizeof(pktid_tlv);
   struct ipv6_sr_hdr tmp_srh;
@@ -336,7 +335,7 @@ static __always_inline bool push_pktidtlv_xdp(struct xdp_md *ctx, __u64 nodeid, 
     return false;
   }
 
-  __builtin_memcpy(new_eth, &tmp_eth, sizeof(tmp_eth));
+  __builtin_memcpy(new_eth, &tmp_eth, sizeof(*new_eth));
   __builtin_memcpy(new_ipv6, &tmp_ipv6, sizeof(*new_ipv6));
   __builtin_memcpy(new_srh, &tmp_srh, sizeof(*new_srh));
 
@@ -356,6 +355,7 @@ static __always_inline bool push_pktidtlv_xdp(struct xdp_md *ctx, __u64 nodeid, 
       break;
     }
   }
+  // Copy Pktid tlv
   __builtin_memcpy(new_pktid_tlv, &pktid_tlv, sizeof(pktid_tlv));
 
   // chage length fields
@@ -369,8 +369,6 @@ static __always_inline bool push_pktidtlv_xdp(struct xdp_md *ctx, __u64 nodeid, 
 
 static __always_inline bool push_pktidtlv_skb(struct __sk_buff *skb, __u64 nodeid, __u64 counter)
 {
-  void *data_end = (void *)(long)skb->data_end;
-  void *data = (void *)(long)skb->data;
   // new pktid_tlv
   struct sr6_pktid_tlv pktid_tlv = new_pktid_tlv(nodeid, counter);
 
@@ -385,20 +383,23 @@ static __always_inline bool push_pktidtlv_skb(struct __sk_buff *skb, __u64 nodei
   }
 
   // new data and data_end
-  data_end = (void *)(long)skb->data_end;
-  data = (void *)(long)skb->data;
+  void *data_end = (void *)(long)skb->data_end;
+  void *data = (void *)(long)skb->data;
+
   // new eth
   struct ethhdr *eth = data;
   if ((void *)eth + sizeof(*eth) > data_end)
   {
     return false;
   }
+  // new ipv6
   struct ipv6hdr *ipv6 = (void *)eth + sizeof(*eth);
   if ((void *)ipv6 + sizeof(*ipv6) > data_end)
   {
     return false;
   }
 
+  // new srh
   struct ipv6_sr_hdr *new_srh = (void *)ipv6 + sizeof(*ipv6);
   struct ipv6_sr_hdr *old_srh = (void *)new_srh + sizeof(pktid_tlv);
   struct ipv6_sr_hdr tmp_srh;
@@ -554,10 +555,13 @@ int ingress(struct xdp_md *ctx)
 
     if (push_pktidtlv_xdp(ctx, *node_id, *count))
     {
-      (*count)++;
+      data_end = (void *)(long)ctx->data_end;
+      data = (void *)(long)ctx->data;
+      packet_size = data_end - data;
       // Perf Event
       unsigned long long pktid = ((unsigned long long)*node_id << (PKTID_TLV_COUNTER_LEN * 8)) | (unsigned long long)*count;
       perf_event(ctx, packet_size, pktid, HOOK_XDP_INGRESS_PUSH);
+      (*count)++;
     }
     else
     {
@@ -615,11 +619,13 @@ int egress(struct __sk_buff *skb)
 
     if (push_pktidtlv_skb(skb, *node_id, *counter))
     {
-      (*counter)++;
+      data_end = (void *)(long)skb->data_end;
+      data = (void *)(long)skb->data;
       packet_size = data_end - data;
       // Perf Event
       unsigned long long pktid = ((unsigned long long)*node_id << (PKTID_TLV_COUNTER_LEN * 8)) | (unsigned long long)*counter;
       perf_event(skb, packet_size, pktid, HOOK_TC_EGRESS_PUSH);
+      (*counter)++;
     }
     else
     {
@@ -676,6 +682,8 @@ int end_insert_id(struct __sk_buff *skb)
 
     if (push_pktidtlv_lwt_seg6(skb, *node_id, *counter))
     {
+      data_end = (void *)(long)skb->data_end;
+      data = (void *)(long)skb->data;
       packet_size = data_end - data;
       // Perf Event
       unsigned long long pktid = ((unsigned long long)*node_id << (PKTID_TLV_COUNTER_LEN * 8)) | (unsigned long long)*counter;

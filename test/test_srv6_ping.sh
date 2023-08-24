@@ -20,7 +20,7 @@ cd -
 sudo ./netns_network_examples/simple/2hosts.sh -c
 
 # start agent
-sudo ip netns exec ns2 sudo ../cmd/srv6_tracing_agent/main -log-level trace &
+sudo ip netns exec ns2 sudo ../cmd/srv6_tracing_agent/main -log-level trace -log-file ./test_log.log &
 # start client
 sudo ip netns exec ns2 ../cmd/srv6_tracing_agent/grpc_client &
 # run test
@@ -38,7 +38,7 @@ sudo ip netns exec ns1 ip -6 route add 2001:db8:10::3/128 dev ns1_veth1 via  200
 sudo ip netns exec ns2 sudo ping -c 3 2001:db8:20::1
 
 # start agent
-sudo ip netns exec ns2 sudo ../cmd/srv6_tracing_agent/main -no-tc-xdp -conf-file ./test_routes.yaml -log-level trace &
+sudo ip netns exec ns2 sudo ../cmd/srv6_tracing_agent/main -no-tc-xdp -conf-file ./test_routes.yaml -log-level trace -log-file ./test_log.log &
 # sudo ip netns exec ns2 tcpdump -i ns2_veth2 -w ns2_veth2.pcap &
 # sudo ip netns exec ns2 tcpdump -i lo -w lo.pcap &
 # sudo ip netns exec ns2 tcpdump -i ns2_veth1 -w ns2_veth1.pcap &
@@ -64,7 +64,7 @@ sudo ./netns_network_examples/simple/2hosts.sh -d
 sudo ./netns_network_examples/simple/2hosts.sh -c
 
 # start agent
-sudo ip netns exec ns2 sudo ../cmd/dumpframe/main -log-level trace &
+sudo ip netns exec ns2 sudo ../cmd/dumpframe/main -log-level trace -log-file ./test_log.log &
 # run test
 sudo ip netns exec ns1 python3 -m unittest ./test_brackbox.py
 

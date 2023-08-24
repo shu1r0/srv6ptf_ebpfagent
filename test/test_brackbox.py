@@ -30,17 +30,17 @@ class TestSPacket(TestCase):
         tlv = new_srh_tlv(type=124, value='\x00\x01\x00\x00\x00\x01')
         result = ping1(dst="2001:db8:20::1", segs=["2001:db8:10::2"], hlim=1, srh_tlvs=[tlv], return_pkt=True)
         self.assertEqual("TimeExceeded", result["msg"])
-        result["recv_pkt"].show()
+        # result["recv_pkt"].show()
         
         time.sleep(1)
     
     def test_large_ping(self):
         results = []
+        result = ping1(dst="2001:db8:20::1", segs=["2001:db8:10::2"], hlim=1, return_pkt=True)
+        tlv = new_srh_tlv(type=124, value='\x00\x01\x00\x00\x00\x01')
         print("Send Large packets ...")
-        result = ping1(dst="2001:db8:10::3", hlim=1, return_pkt=True, data_len=600)
-        print(result)
         for _ in range(3):
-            result = ping1(dst="2001:db8:20::1", segs=["2001:db8:10::3"], hlim=1, return_pkt=True)
+            result = ping1(dst="2001:db8:20::1", segs=["2001:db8:10::2"], hlim=1, return_pkt=True, data_len=800)
             if result:
                 results.append(result)
         
