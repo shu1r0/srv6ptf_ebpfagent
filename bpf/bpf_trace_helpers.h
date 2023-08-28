@@ -14,6 +14,19 @@
 #define HOOK_LWT_SEG6LOCAL_GET 11
 #define HOOK_LWT_SEG6LOCAL_PUSH 12
 
+#define ENABLE_HOOK_XDP_INGRESS_GET true
+#define ENABLE_HOOK_XDP_INGRESS_PUSH true
+#define ENABLE_HOOK_TC_EGRESS_GET false
+#define ENABLE_HOOK_TC_EGRESS_PUSH true
+#define ENABLE_HOOK_LWT_IN_GET false
+#define ENABLE_HOOK_LWT_IN_PUSH true
+#define ENABLE_HOOK_LWT_XMIT_GET false
+#define ENABLE_HOOK_LWT_XMIT_PUSH true
+#define ENABLE_HOOK_LWT_OUT_GET false
+#define ENABLE_HOOK_LWT_OUT_PUSH true
+#define ENABLE_HOOK_LWT_SEG6LOCAL_GET false
+#define ENABLE_HOOK_LWT_SEG6LOCAL_PUSH true
+
 #define WARNING
 #ifdef WARNING
 #define bpf_warn(fmt, args...) bpf_printk(fmt, ##args)
