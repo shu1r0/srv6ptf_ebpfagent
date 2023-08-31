@@ -2,12 +2,13 @@ package main
 
 import (
 	"flag"
-	"github.com/shu1r0/srv6ptf_ebpfagent/internal/config"
-	"github.com/shu1r0/srv6ptf_ebpfagent/internal/log_utils"
-	"github.com/shu1r0/srv6ptf_ebpfagent/pkg/ebpf"
 	"os"
 	"os/signal"
 	"strings"
+
+	"github.com/shu1r0/srv6ptf_ebpfagent/internal/config"
+	"github.com/shu1r0/srv6ptf_ebpfagent/internal/log_utils"
+	"github.com/shu1r0/srv6ptf_ebpfagent/pkg/ebpf"
 
 	"github.com/shu1r0/srv6ptf_ebpfagent/pkg/agent"
 	log "github.com/sirupsen/logrus"
@@ -35,12 +36,19 @@ func main() {
 	}
 
 	var endInsertId []ebpf.Seg6LocalEndInsertIdRoute = nil
+	var xmitReadId []ebpf.LWTReadIdRoute = nil
+	var inReadId []ebpf.LWTReadIdRoute = nil
+	var outReadId []ebpf.LWTReadIdRoute = nil
+
 	if *conf != "" {
 		routeConf, err := config.ParseConfFile(*conf)
 		if err != nil {
 			log.Panic(err)
 		}
 		endInsertId = routeConf.Routes.Add.EndInsertId
+		xmitReadId = routeConf.Routes.Add.XmitReadId
+		inReadId = routeConf.Routes.Add.InReadId
+		outReadId = routeConf.Routes.Add.OutReadId
 	}
 
 	var attachOpt *ebpf.AttachAllOptions = nil
@@ -62,6 +70,18 @@ func main() {
 
 	if endInsertId != nil {
 		ag.Dp.EndIIDRoutesConfig = endInsertId
+	}
+
+	if xmitReadId != nil {
+		ag.Dp.XmitReadIdRoutesConfig = xmitReadId
+	}
+
+	if inReadId != nil {
+		ag.Dp.InReadIdRoutesConfig = inReadId
+	}
+
+	if outReadId != nil {
+		ag.Dp.OutReadIdRoutesConfig = outReadId
 	}
 
 	quit := make(chan os.Signal)

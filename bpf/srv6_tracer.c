@@ -608,7 +608,7 @@ int egress(struct __sk_buff *skb)
       if(ENABLE_HOOK_TC_EGRESS_GET){
         // Perf Event
         unsigned long long pktid = (nodeidtoi(tlv) << (PKTID_TLV_COUNTER_LEN * 8)) + countertoi(tlv, data_end);
-        perf_event(skb, packet_size, pktid, HOOK_TC_INGRESS_GET);
+        perf_event(skb, packet_size, pktid, HOOK_TC_EGRESS_GET);
       }
     }
   }
@@ -719,6 +719,125 @@ int end_insert_id(struct __sk_buff *skb)
     }
 
     bpf_debug("end_insert_id: PktId TLV added to SRH.");
+  }
+
+  return BPF_OK;
+}
+
+SEC("lwt_xmit/read_id")
+int lwtxmit_read_id(struct __sk_buff *skb)
+{
+  bpf_trace("lwtxmit_read: Enter packet");
+  void *data_end = (void *)(long)skb->data_end;
+  void *data = (void *)(long)skb->data;
+  __u64 packet_size = data_end - data;
+
+  struct ipv6_sr_hdr *srh = get_srh_lwt(data, data_end);
+  if (srh == NULL)
+  {
+    bpf_trace("lwtxmit_read: No SRv6 Packet.");
+    return BPF_OK;
+  }
+  bpf_trace("lwtxmit_read: Get SRv6 Packet.");
+
+  struct sr6_pktid_tlv *tlv = get_pktidtlv(srh, data, data_end);
+  if (tlv)
+  {
+    bpf_trace("lwtxmit_read: PktId TLV Packet.");
+    if ((void *)tlv + PKTID_TLV_NODEID_LEN + PKTID_TLV_COUNTER_LEN <= data_end)
+    {
+      if(ENABLE_HOOK_LWT_XMIT_GET){
+        // Perf Event
+        unsigned long long pktid = (nodeidtoi(tlv) << (PKTID_TLV_COUNTER_LEN * 8)) + countertoi(tlv, data_end);
+        perf_event(skb, packet_size, pktid, HOOK_LWT_XMIT_GET);
+      }
+    }
+  }
+  else
+  {
+    // Asigning PKTID
+    // TODO
+    bpf_debug("lwtxmit_read: Did not support for add to SRH.");
+  }
+
+  return BPF_OK;
+}
+
+
+SEC("lwt_in/read_id")
+int lwtin_read_id(struct __sk_buff *skb)
+{
+  bpf_trace("lwtin_read: Enter packet");
+  void *data_end = (void *)(long)skb->data_end;
+  void *data = (void *)(long)skb->data;
+  __u64 packet_size = data_end - data;
+
+  struct ipv6_sr_hdr *srh = get_srh_lwt(data, data_end);
+  if (srh == NULL)
+  {
+    bpf_trace("lwtin_read: No SRv6 Packet.");
+    return BPF_OK;
+  }
+  bpf_trace("lwtin_read: Get SRv6 Packet.");
+
+  struct sr6_pktid_tlv *tlv = get_pktidtlv(srh, data, data_end);
+  if (tlv)
+  {
+    bpf_trace("lwtin_read: PktId TLV Packet.");
+    if ((void *)tlv + PKTID_TLV_NODEID_LEN + PKTID_TLV_COUNTER_LEN <= data_end)
+    {
+      if(ENABLE_HOOK_LWT_IN_GET){
+        // Perf Event
+        unsigned long long pktid = (nodeidtoi(tlv) << (PKTID_TLV_COUNTER_LEN * 8)) + countertoi(tlv, data_end);
+        perf_event(skb, packet_size, pktid, HOOK_LWT_IN_GET);
+      }
+    }
+  }
+  else
+  {
+    // Asigning PKTID
+    // TODO
+    bpf_debug("lwtin_read: Did not support for add to SRH.");
+  }
+
+  return BPF_OK;
+}
+
+
+SEC("lwt_out/read_id")
+int lwtout_read_id(struct __sk_buff *skb)
+{
+  bpf_trace("lwtout_read: Enter packet");
+  void *data_end = (void *)(long)skb->data_end;
+  void *data = (void *)(long)skb->data;
+  __u64 packet_size = data_end - data;
+
+  struct ipv6_sr_hdr *srh = get_srh_lwt(data, data_end);
+  if (srh == NULL)
+  {
+    bpf_trace("lwtout_read: No SRv6 Packet.");
+    return BPF_OK;
+  }
+  bpf_trace("lwtout_read: Get SRv6 Packet.");
+
+  struct sr6_pktid_tlv *tlv = get_pktidtlv(srh, data, data_end);
+  if (tlv)
+  {
+    bpf_trace("lwtout_read: PktId TLV Packet.");
+    if ((void *)tlv + PKTID_TLV_NODEID_LEN + PKTID_TLV_COUNTER_LEN <= data_end)
+    {
+      if(ENABLE_HOOK_LWT_OUT_GET){
+        // Perf Event
+        unsigned long long pktid = (nodeidtoi(tlv) << (PKTID_TLV_COUNTER_LEN * 8)) + countertoi(tlv, data_end);
+        perf_event(skb, packet_size, pktid, HOOK_LWT_OUT_GET);
+      }
+    }
+  }
+  else
+  {
+    // Asigning PKTID
+    // TODO
+    bpf_debug("lwtout_read: Did not support for add to SRH.");
   }
 
   return BPF_OK;

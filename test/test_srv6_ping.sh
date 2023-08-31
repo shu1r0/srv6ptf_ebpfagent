@@ -35,6 +35,7 @@ sudo ./netns_network_examples/simple/2hosts.sh -d
 sudo ./netns_network_examples/simple/2hosts.sh -c
 
 sudo ip netns exec ns1 ip -6 route add 2001:db8:10::3/128 dev ns1_veth1 via  2001:db8:10::2
+sudo ip netns exec ns1 ip -6 route add 2001:db8:10::4/128 dev ns1_veth1 via  2001:db8:10::2
 sudo ip netns exec ns2 sudo ping -c 3 2001:db8:20::1
 
 # start agent
