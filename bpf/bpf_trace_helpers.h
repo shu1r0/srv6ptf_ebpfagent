@@ -20,11 +20,7 @@
 #define ENABLE_HOOK_TC_EGRESS_PUSH true
 #define ENABLE_HOOK_LWT_IN_GET false
 #define ENABLE_HOOK_LWT_IN_PUSH true
-<<<<<<< HEAD
 #define ENABLE_HOOK_LWT_XMIT_GET true
-=======
-#define ENABLE_HOOK_LWT_XMIT_GET false
->>>>>>> 42b4351 (add enable hook flag)
 #define ENABLE_HOOK_LWT_XMIT_PUSH true
 #define ENABLE_HOOK_LWT_OUT_GET false
 #define ENABLE_HOOK_LWT_OUT_PUSH true
