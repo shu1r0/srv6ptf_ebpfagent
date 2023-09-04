@@ -605,6 +605,15 @@ int egress(struct __sk_buff *skb)
   if (tlv)
   {
     bpf_trace("Egress: PktId TLV Packet.");
+    if ((void *)tlv + PKTID_TLV_NODEID_LEN + PKTID_TLV_COUNTER_LEN <= data_end)
+    {
+      if (ENABLE_HOOK_TC_EGRESS_GET)
+      {
+        // Perf Event
+        unsigned long long pktid = (nodeidtoi(tlv) << (PKTID_TLV_COUNTER_LEN * 8)) + countertoi(tlv, data_end);
+        perf_event(skb, packet_size, pktid, HOOK_TC_INGRESS_GET);
+      }
+    }
   }
   else
   {
