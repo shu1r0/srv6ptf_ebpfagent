@@ -71,7 +71,9 @@ func (cp *TracingAgent) SetDp(nodeid uint32) {
 func (cp *TracingAgent) Stop() {
 	log.Info("Stop gRPC Server.")
 	cp.Server.GracefulStop()
-	cp.Dp.Close()
+	if err := cp.Dp.Close(); err != nil {
+		log.Fatalf("Dataplane Close Error: %s", err)
+	}
 	cp.Dp.DettachAll()
 }
 

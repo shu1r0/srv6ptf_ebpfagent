@@ -60,9 +60,12 @@ type tracerSpecs struct {
 //
 // It can be passed ebpf.CollectionSpec.Assign.
 type tracerProgramSpecs struct {
-	Egress      *ebpf.ProgramSpec `ebpf:"egress"`
-	EndInsertId *ebpf.ProgramSpec `ebpf:"end_insert_id"`
-	Ingress     *ebpf.ProgramSpec `ebpf:"ingress"`
+	Egress        *ebpf.ProgramSpec `ebpf:"egress"`
+	EndInsertId   *ebpf.ProgramSpec `ebpf:"end_insert_id"`
+	Ingress       *ebpf.ProgramSpec `ebpf:"ingress"`
+	LwtinReadId   *ebpf.ProgramSpec `ebpf:"lwtin_read_id"`
+	LwtoutReadId  *ebpf.ProgramSpec `ebpf:"lwtout_read_id"`
+	LwtxmitReadId *ebpf.ProgramSpec `ebpf:"lwtxmit_read_id"`
 }
 
 // tracerMapSpecs contains maps before they are loaded into the kernel.
@@ -110,9 +113,12 @@ func (m *tracerMaps) Close() error {
 //
 // It can be passed to loadTracerObjects or ebpf.CollectionSpec.LoadAndAssign.
 type tracerPrograms struct {
-	Egress      *ebpf.Program `ebpf:"egress"`
-	EndInsertId *ebpf.Program `ebpf:"end_insert_id"`
-	Ingress     *ebpf.Program `ebpf:"ingress"`
+	Egress        *ebpf.Program `ebpf:"egress"`
+	EndInsertId   *ebpf.Program `ebpf:"end_insert_id"`
+	Ingress       *ebpf.Program `ebpf:"ingress"`
+	LwtinReadId   *ebpf.Program `ebpf:"lwtin_read_id"`
+	LwtoutReadId  *ebpf.Program `ebpf:"lwtout_read_id"`
+	LwtxmitReadId *ebpf.Program `ebpf:"lwtxmit_read_id"`
 }
 
 func (p *tracerPrograms) Close() error {
@@ -120,6 +126,9 @@ func (p *tracerPrograms) Close() error {
 		p.Egress,
 		p.EndInsertId,
 		p.Ingress,
+		p.LwtinReadId,
+		p.LwtoutReadId,
+		p.LwtxmitReadId,
 	)
 }
 

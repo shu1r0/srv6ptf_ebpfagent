@@ -5,3 +5,12 @@ routes:
         link: "ns2_veth1"
     #  - destination: "2001:db8:20::1/128"
     #    link: "ns2_veth2"
+    xmit_read_id:
+      - destination: "2001:db8:10::4/128"
+        link: "ns2_veth1"
+    in_read_id:
+      - destination: "2001:db8:10::5/128"
+        link: "ns2_veth1"
+    out_read_id:
+      - destination: "2001:db8:10::6/128"
+        link: "ns2_veth1"

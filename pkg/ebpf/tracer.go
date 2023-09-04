@@ -5,8 +5,9 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"github.com/vishvananda/netlink/nl"
 	"net"
+
+	"github.com/vishvananda/netlink/nl"
 
 	log "github.com/sirupsen/logrus"
 
@@ -27,16 +28,24 @@ type Seg6LocalEndInsertIdRoute struct {
 	Link        string `yaml:"link"`
 }
 
+type LWTReadIdRoute struct {
+	Destination string `yaml:"destination"`
+	Link        string `yaml:"link"`
+}
+
 var PerfEventItemSize = 17
 
 type TracingDataPlane struct {
 	tracerObjects
-	InIfaces           []string
-	EIfaces            []string
-	Efilters           []*netlink.BpfFilter
-	Eqdiscs            []*netlink.GenericQdisc
-	EndIIDRoutesConfig []Seg6LocalEndInsertIdRoute
-	AddedRoutes        []*netlink.Route
+	InIfaces               []string
+	EIfaces                []string
+	Efilters               []*netlink.BpfFilter
+	Eqdiscs                []*netlink.GenericQdisc
+	EndIIDRoutesConfig     []Seg6LocalEndInsertIdRoute
+	XmitReadIdRoutesConfig []LWTReadIdRoute
+	InReadIdRoutesConfig   []LWTReadIdRoute
+	OutReadIdRoutesConfig  []LWTReadIdRoute
+	AddedRoutes            []*netlink.Route
 }
 
 type AttachAllOptions struct {
@@ -89,6 +98,24 @@ func (obj *TracingDataPlane) AttachAll(options *AttachAllOptions) error {
 
 	for _, r := range obj.EndIIDRoutesConfig {
 		if err := obj.AttachSeg6LocalEndInsertId(r.Destination, r.Link); err != nil {
+			return err
+		}
+	}
+
+	for _, r := range obj.XmitReadIdRoutesConfig {
+		if err := obj.AttachLWTXmitReadId(r.Destination, r.Link); err != nil {
+			return err
+		}
+	}
+
+	for _, r := range obj.InReadIdRoutesConfig {
+		if err := obj.AttachLWTInReadId(r.Destination, r.Link); err != nil {
+			return err
+		}
+	}
+
+	for _, r := range obj.OutReadIdRoutesConfig {
+		if err := obj.AttachLWTOutReadId(r.Destination, r.Link); err != nil {
 			return err
 		}
 	}
@@ -215,7 +242,44 @@ func (obj *TracingDataPlane) AttachSeg6LocalEndInsertId(dst_s string, link strin
 		return fmt.Errorf("link by name error : %s", err)
 	}
 	route := netlink.Route{LinkIndex: oif.Attrs().Index, Dst: dst, Encap: &endBpfEncap}
-	fmt.Println(route)
+	if err := netlink.RouteAdd(&route); err != nil {
+		return fmt.Errorf("route add error : %s", err)
+	}
+	obj.AddedRoutes = append(obj.AddedRoutes, &route)
+
+	return nil
+}
+
+func (obj *TracingDataPlane) AttachLWTXmitReadId(dst_s string, link string) error {
+	return obj.AttachLWT(nl.LWT_BPF_XMIT, obj.LwtxmitReadId.FD(), "XMIT.Read.ID", dst_s, link)
+}
+
+func (obj *TracingDataPlane) AttachLWTInReadId(dst_s string, link string) error {
+	return obj.AttachLWT(nl.LWT_BPF_IN, obj.LwtinReadId.FD(), "IN.Read.ID", dst_s, link)
+}
+
+func (obj *TracingDataPlane) AttachLWTOutReadId(dst_s string, link string) error {
+	return obj.AttachLWT(nl.LWT_BPF_OUT, obj.LwtoutReadId.FD(), "OUT.Read.ID", dst_s, link)
+}
+
+func (obj *TracingDataPlane) AttachLWT(flag int, fd int, name string, dst_s string, link string) error {
+	var flags_end_bpf [nl.SEG6_LOCAL_MAX]bool
+	flags_end_bpf[nl.SEG6_LOCAL_ACTION] = true
+	flags_end_bpf[nl.SEG6_LOCAL_BPF] = true
+	bpfEncap := netlink.BpfEncap{}
+	if err := bpfEncap.SetProg(flag, fd, name); err != nil {
+		return err
+	}
+
+	_, dst, err := net.ParseCIDR(dst_s)
+	if err != nil {
+		return fmt.Errorf("parse cidr error : %s", err)
+	}
+	oif, err := netlink.LinkByName(link)
+	if err != nil {
+		return fmt.Errorf("link by name error : %s", err)
+	}
+	route := netlink.Route{LinkIndex: oif.Attrs().Index, Dst: dst, Encap: &bpfEncap}
 	if err := netlink.RouteAdd(&route); err != nil {
 		return fmt.Errorf("route add error : %s", err)
 	}
@@ -253,8 +317,12 @@ func (obj *TracingDataPlane) PacketInfoChan() (chan PacketInfo, error) {
 			if err := binary.Read(reader, binary.LittleEndian, &item); err != nil {
 				log.Errorf("PacketInfoChan read binary error: %s", err)
 			}
-			pktinfo := NewPacketInfo(ev.RawSample[PerfEventItemSize:], int(item.Pktid), item.MonotonicTimestamp, int(item.Hookpoint))
-			pktChan <- *pktinfo
+			if len(ev.RawSample) > PerfEventItemSize {
+				pktinfo := NewPacketInfo(ev.RawSample[PerfEventItemSize:], int(item.Pktid), item.MonotonicTimestamp, int(item.Hookpoint))
+				pktChan <- *pktinfo
+			} else {
+				log.Errorf("PacketInfoChan binary length %d", len(ev.RawSample))
+			}
 		}
 	}()
 	return pktChan, nil
