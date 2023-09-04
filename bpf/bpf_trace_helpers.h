@@ -28,27 +28,28 @@
 #define ENABLE_HOOK_LWT_SEG6LOCAL_PUSH true
 
 #define WARNING
-#ifdef WARNING
+// #define INFO
+// #define DEBUG
+// #define TRACE
+
+#ifdef WARNING || INFO || DEBUG || TRACE
 #define bpf_warn(fmt, args...) bpf_printk(fmt, ##args)
 #else
 #define bpf_warn(fmt, args...)
 #endif
 
-// #define INFO
-#ifdef INFO
+#ifdef INFO || DEBUG || TRACE
 #define bpf_info(fmt, args...) bpf_printk(fmt, ##args)
 #else
 #define bpf_info(fmt, args...)
 #endif
 
-// #define DEBUG
-#ifdef DEBUG
+#ifdef DEBUG || TRACE
 #define bpf_debug(fmt, args...) bpf_printk(fmt, ##args)
 #else
 #define bpf_debug(fmt, args...)
 #endif
 
-// #define TRACE
 #ifdef TRACE
 #define bpf_trace(fmt, args...) bpf_printk(fmt, ##args)
 #else

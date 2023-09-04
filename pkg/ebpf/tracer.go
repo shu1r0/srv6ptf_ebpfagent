@@ -317,8 +317,12 @@ func (obj *TracingDataPlane) PacketInfoChan() (chan PacketInfo, error) {
 			if err := binary.Read(reader, binary.LittleEndian, &item); err != nil {
 				log.Errorf("PacketInfoChan read binary error: %s", err)
 			}
-			pktinfo := NewPacketInfo(ev.RawSample[PerfEventItemSize:], int(item.Pktid), item.MonotonicTimestamp, int(item.Hookpoint))
-			pktChan <- *pktinfo
+			if len(ev.RawSample) > PerfEventItemSize {
+				pktinfo := NewPacketInfo(ev.RawSample[PerfEventItemSize:], int(item.Pktid), item.MonotonicTimestamp, int(item.Hookpoint))
+				pktChan <- *pktinfo
+			} else {
+				log.Errorf("PacketInfoChan binary length %d", len(ev.RawSample))
+			}
 		}
 	}()
 	return pktChan, nil
