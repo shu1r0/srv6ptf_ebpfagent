@@ -530,7 +530,8 @@ int ingress(struct xdp_md *ctx)
     bpf_trace("Ingress: PktId TLV Packet");
     if ((void *)tlv + PKTID_TLV_NODEID_LEN + PKTID_TLV_COUNTER_LEN <= data_end)
     {
-      if(ENABLE_HOOK_XDP_INGRESS_GET){
+      if (ENABLE_HOOK_XDP_INGRESS_GET)
+      {
         // Perf Event
         unsigned long long pktid = (nodeidtoi(tlv) << (PKTID_TLV_COUNTER_LEN * 8)) + countertoi(tlv, data_end);
         perf_event(ctx, packet_size, pktid, HOOK_XDP_INGRESS_GET);
@@ -557,7 +558,8 @@ int ingress(struct xdp_md *ctx)
 
     if (push_pktidtlv_xdp(ctx, *node_id, *count))
     {
-      if(ENABLE_HOOK_XDP_INGRESS_PUSH){
+      if (ENABLE_HOOK_XDP_INGRESS_PUSH)
+      {
         data_end = (void *)(long)ctx->data_end;
         data = (void *)(long)ctx->data;
         packet_size = data_end - data;
@@ -603,14 +605,6 @@ int egress(struct __sk_buff *skb)
   if (tlv)
   {
     bpf_trace("Egress: PktId TLV Packet.");
-    if ((void *)tlv + PKTID_TLV_NODEID_LEN + PKTID_TLV_COUNTER_LEN <= data_end)
-    {
-      if(ENABLE_HOOK_TC_EGRESS_GET){
-        // Perf Event
-        unsigned long long pktid = (nodeidtoi(tlv) << (PKTID_TLV_COUNTER_LEN * 8)) + countertoi(tlv, data_end);
-        perf_event(skb, packet_size, pktid, HOOK_TC_EGRESS_GET);
-      }
-    }
   }
   else
   {
@@ -631,7 +625,8 @@ int egress(struct __sk_buff *skb)
 
     if (push_pktidtlv_skb(skb, *node_id, *counter))
     {
-      if(ENABLE_HOOK_TC_EGRESS_PUSH){
+      if (ENABLE_HOOK_TC_EGRESS_PUSH)
+      {
         data_end = (void *)(long)skb->data_end;
         data = (void *)(long)skb->data;
         packet_size = data_end - data;
@@ -678,7 +673,8 @@ int end_insert_id(struct __sk_buff *skb)
     bpf_trace("end_insert_id: PktId TLV Packet.");
     if ((void *)tlv + PKTID_TLV_NODEID_LEN + PKTID_TLV_COUNTER_LEN <= data_end)
     {
-      if(ENABLE_HOOK_LWT_SEG6LOCAL_GET){
+      if (ENABLE_HOOK_LWT_SEG6LOCAL_GET)
+      {
         // Perf Event
         unsigned long long pktid = (nodeidtoi(tlv) << (PKTID_TLV_COUNTER_LEN * 8)) + countertoi(tlv, data_end);
         perf_event(skb, packet_size, pktid, HOOK_LWT_SEG6LOCAL_GET);
@@ -746,7 +742,8 @@ int lwtxmit_read_id(struct __sk_buff *skb)
     bpf_trace("lwtxmit_read: PktId TLV Packet.");
     if ((void *)tlv + PKTID_TLV_NODEID_LEN + PKTID_TLV_COUNTER_LEN <= data_end)
     {
-      if(ENABLE_HOOK_LWT_XMIT_GET){
+      if (ENABLE_HOOK_LWT_XMIT_GET)
+      {
         // Perf Event
         unsigned long long pktid = (nodeidtoi(tlv) << (PKTID_TLV_COUNTER_LEN * 8)) + countertoi(tlv, data_end);
         perf_event(skb, packet_size, pktid, HOOK_LWT_XMIT_GET);
@@ -762,7 +759,6 @@ int lwtxmit_read_id(struct __sk_buff *skb)
 
   return BPF_OK;
 }
-
 
 SEC("lwt_in/read_id")
 int lwtin_read_id(struct __sk_buff *skb)
@@ -786,7 +782,8 @@ int lwtin_read_id(struct __sk_buff *skb)
     bpf_trace("lwtin_read: PktId TLV Packet.");
     if ((void *)tlv + PKTID_TLV_NODEID_LEN + PKTID_TLV_COUNTER_LEN <= data_end)
     {
-      if(ENABLE_HOOK_LWT_IN_GET){
+      if (ENABLE_HOOK_LWT_IN_GET)
+      {
         // Perf Event
         unsigned long long pktid = (nodeidtoi(tlv) << (PKTID_TLV_COUNTER_LEN * 8)) + countertoi(tlv, data_end);
         perf_event(skb, packet_size, pktid, HOOK_LWT_IN_GET);
@@ -802,7 +799,6 @@ int lwtin_read_id(struct __sk_buff *skb)
 
   return BPF_OK;
 }
-
 
 SEC("lwt_out/read_id")
 int lwtout_read_id(struct __sk_buff *skb)
@@ -826,7 +822,8 @@ int lwtout_read_id(struct __sk_buff *skb)
     bpf_trace("lwtout_read: PktId TLV Packet.");
     if ((void *)tlv + PKTID_TLV_NODEID_LEN + PKTID_TLV_COUNTER_LEN <= data_end)
     {
-      if(ENABLE_HOOK_LWT_OUT_GET){
+      if (ENABLE_HOOK_LWT_OUT_GET)
+      {
         // Perf Event
         unsigned long long pktid = (nodeidtoi(tlv) << (PKTID_TLV_COUNTER_LEN * 8)) + countertoi(tlv, data_end);
         perf_event(skb, packet_size, pktid, HOOK_LWT_OUT_GET);
