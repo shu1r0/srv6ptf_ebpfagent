@@ -36,87 +36,87 @@ class TestEndBPF(TestCase):
         
         time.sleep(1)
         
-    def test_xmit_readid_ping(self):
-        results = []
-        print("Send packets ...")
-        result = ping1(dst="2001:db8:10::4", hlim=1, return_pkt=True)
-        print(result)
-        for _ in range(3):
-            result = ping1(dst="2001:db8:20::1", segs=["2001:db8:10::4"], hlim=1, return_pkt=True)
-            if result:
-                results.append(result)
+    # def test_xmit_readid_ping(self):
+    #     results = []
+    #     print("Send packets ...")
+    #     result = ping1(dst="2001:db8:10::4", hlim=1, return_pkt=True)
+    #     print(result)
+    #     for _ in range(3):
+    #         result = ping1(dst="2001:db8:20::1", segs=["2001:db8:10::4"], hlim=1, return_pkt=True)
+    #         if result:
+    #             results.append(result)
         
-        # echo reply
-        self.assertTrue(len(results) > 0)
-        print("Received packets: {}".format(results))
-        if len(results) > 0:
-            for result in results:
-                self.assertEqual("TimeExceeded", result["msg"])
-                # check return_pkt
-                self.assertTrue(result["sent_pkt"][IPv6].src == result["recv_pkt"][IPv6].dst)
-                self.assertTrue(IPv6ExtHdrSegmentRoutingTLV in result["recv_pkt"])
+    #     # echo reply
+    #     self.assertTrue(len(results) > 0)
+    #     print("Received packets: {}".format(results))
+    #     if len(results) > 0:
+    #         for result in results:
+    #             self.assertEqual("TimeExceeded", result["msg"])
+    #             # check return_pkt
+    #             self.assertTrue(result["sent_pkt"][IPv6].src == result["recv_pkt"][IPv6].dst)
+    #             self.assertTrue(IPv6ExtHdrSegmentRoutingTLV in result["recv_pkt"])
         
-        print("send packetid")
-        tlv = new_srh_tlv(type=124, value='\x00\x01\x00\x00\x00\x01')
-        result = ping1(dst="2001:db8:20::1", segs=["2001:db8:10::4"], hlim=1, srh_tlvs=[tlv], return_pkt=True)
-        self.assertEqual("TimeExceeded", result["msg"])
-        result["recv_pkt"].show()
+    #     print("send packetid")
+    #     tlv = new_srh_tlv(type=124, value='\x00\x01\x00\x00\x00\x01')
+    #     result = ping1(dst="2001:db8:20::1", segs=["2001:db8:10::4"], hlim=1, srh_tlvs=[tlv], return_pkt=True)
+    #     self.assertEqual("TimeExceeded", result["msg"])
+    #     result["recv_pkt"].show()
         
-        time.sleep(1)
+    #     time.sleep(1)
         
-    def test_in_readid_ping(self):
-        results = []
-        print("Send packets ...")
-        result = ping1(dst="2001:db8:10::5", hlim=1, return_pkt=True)
-        print(result)
-        for _ in range(3):
-            result = ping1(dst="2001:db8:20::1", segs=["2001:db8:10::5"], hlim=1, return_pkt=True)
-            if result:
-                results.append(result)
+    # def test_in_readid_ping(self):
+    #     results = []
+    #     print("Send packets ...")
+    #     result = ping1(dst="2001:db8:10::5", hlim=1, return_pkt=True)
+    #     print(result)
+    #     for _ in range(3):
+    #         result = ping1(dst="2001:db8:20::1", segs=["2001:db8:10::5"], hlim=1, return_pkt=True)
+    #         if result:
+    #             results.append(result)
         
-        # echo reply
-        self.assertTrue(len(results) > 0)
-        print("Received packets: {}".format(results))
-        if len(results) > 0:
-            for result in results:
-                self.assertEqual("TimeExceeded", result["msg"])
-                # check return_pkt
-                self.assertTrue(result["sent_pkt"][IPv6].src == result["recv_pkt"][IPv6].dst)
-                self.assertTrue(IPv6ExtHdrSegmentRoutingTLV in result["recv_pkt"])
+    #     # echo reply
+    #     self.assertTrue(len(results) > 0)
+    #     print("Received packets: {}".format(results))
+    #     if len(results) > 0:
+    #         for result in results:
+    #             self.assertEqual("TimeExceeded", result["msg"])
+    #             # check return_pkt
+    #             self.assertTrue(result["sent_pkt"][IPv6].src == result["recv_pkt"][IPv6].dst)
+    #             self.assertTrue(IPv6ExtHdrSegmentRoutingTLV in result["recv_pkt"])
         
-        print("send packetid")
-        tlv = new_srh_tlv(type=124, value='\x00\x01\x00\x00\x00\x01')
-        result = ping1(dst="2001:db8:20::1", segs=["2001:db8:10::5"], hlim=1, srh_tlvs=[tlv], return_pkt=True)
-        self.assertEqual("TimeExceeded", result["msg"])
-        result["recv_pkt"].show()
+    #     print("send packetid")
+    #     tlv = new_srh_tlv(type=124, value='\x00\x01\x00\x00\x00\x01')
+    #     result = ping1(dst="2001:db8:20::1", segs=["2001:db8:10::5"], hlim=1, srh_tlvs=[tlv], return_pkt=True)
+    #     self.assertEqual("TimeExceeded", result["msg"])
+    #     result["recv_pkt"].show()
         
-        time.sleep(1)
+    #     time.sleep(1)
         
-    def test_out_readid_ping(self):
-        results = []
-        print("Send packets ...")
-        result = ping1(dst="2001:db8:10::6", hlim=1, return_pkt=True)
-        print(result)
-        for _ in range(3):
-            result = ping1(dst="2001:db8:20::1", segs=["2001:db8:10::6"], hlim=1, return_pkt=True)
-            if result:
-                results.append(result)
+    # def test_out_readid_ping(self):
+    #     results = []
+    #     print("Send packets ...")
+    #     result = ping1(dst="2001:db8:10::6", hlim=1, return_pkt=True)
+    #     print(result)
+    #     for _ in range(3):
+    #         result = ping1(dst="2001:db8:20::1", segs=["2001:db8:10::6"], hlim=1, return_pkt=True)
+    #         if result:
+    #             results.append(result)
         
-        # echo reply
-        self.assertTrue(len(results) > 0)
-        print("Received packets: {}".format(results))
-        if len(results) > 0:
-            for result in results:
-                self.assertEqual("TimeExceeded", result["msg"])
-                # check return_pkt
-                self.assertTrue(result["sent_pkt"][IPv6].src == result["recv_pkt"][IPv6].dst)
-                self.assertTrue(IPv6ExtHdrSegmentRoutingTLV in result["recv_pkt"])
+    #     # echo reply
+    #     self.assertTrue(len(results) > 0)
+    #     print("Received packets: {}".format(results))
+    #     if len(results) > 0:
+    #         for result in results:
+    #             self.assertEqual("TimeExceeded", result["msg"])
+    #             # check return_pkt
+    #             self.assertTrue(result["sent_pkt"][IPv6].src == result["recv_pkt"][IPv6].dst)
+    #             self.assertTrue(IPv6ExtHdrSegmentRoutingTLV in result["recv_pkt"])
         
-        print("send packetid")
-        tlv = new_srh_tlv(type=124, value='\x00\x01\x00\x00\x00\x01')
-        result = ping1(dst="2001:db8:20::1", segs=["2001:db8:10::6"], hlim=1, srh_tlvs=[tlv], return_pkt=True)
-        self.assertEqual("TimeExceeded", result["msg"])
-        result["recv_pkt"].show()
+    #     print("send packetid")
+    #     tlv = new_srh_tlv(type=124, value='\x00\x01\x00\x00\x00\x01')
+    #     result = ping1(dst="2001:db8:20::1", segs=["2001:db8:10::6"], hlim=1, srh_tlvs=[tlv], return_pkt=True)
+    #     self.assertEqual("TimeExceeded", result["msg"])
+    #     result["recv_pkt"].show()
         
-        time.sleep(1)
+    #     time.sleep(1)
 

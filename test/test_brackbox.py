@@ -7,6 +7,9 @@ from srv6_ping.ping import ping1, new_srh_tlv
 
 
 class TestSPacket(TestCase):
+
+    def setUp(self):
+        pass
     
     def test_srv6_ping(self):
         results = []
@@ -46,3 +49,6 @@ class TestSPacket(TestCase):
         
         # echo reply
         self.assertTrue(len(results) > 0)
+
+    def tearDown(self):
+        pass

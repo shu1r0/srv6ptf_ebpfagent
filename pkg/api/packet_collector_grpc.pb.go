@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.2.0
 // - protoc             v3.12.4
-// source: packet_collector.proto
+// source: nfagent/api/packet_collector.proto
 
 package api
 
@@ -24,6 +24,7 @@ const _ = grpc.SupportPackageIsVersion7
 type PacketCollectServiceClient interface {
 	SetPoll(ctx context.Context, in *PollSettingRequest, opts ...grpc.CallOption) (*PollSettingReply, error)
 	GetPacketInfo(ctx context.Context, in *PacketInfoRequest, opts ...grpc.CallOption) (*PacketInfoReply, error)
+	GetEbpfProgramInfo(ctx context.Context, in *EbpfProgramInfoRequest, opts ...grpc.CallOption) (*EbpfProgramInfoReply, error)
 	GetPacketInfoStream(ctx context.Context, in *PacketInfoStreamRequest, opts ...grpc.CallOption) (PacketCollectService_GetPacketInfoStreamClient, error)
 }
 
@@ -47,6 +48,15 @@ func (c *packetCollectServiceClient) SetPoll(ctx context.Context, in *PollSettin
 func (c *packetCollectServiceClient) GetPacketInfo(ctx context.Context, in *PacketInfoRequest, opts ...grpc.CallOption) (*PacketInfoReply, error) {
 	out := new(PacketInfoReply)
 	err := c.cc.Invoke(ctx, "/PacketCollectService/GetPacketInfo", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *packetCollectServiceClient) GetEbpfProgramInfo(ctx context.Context, in *EbpfProgramInfoRequest, opts ...grpc.CallOption) (*EbpfProgramInfoReply, error) {
+	out := new(EbpfProgramInfoReply)
+	err := c.cc.Invoke(ctx, "/PacketCollectService/GetEbpfProgramInfo", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -91,6 +101,7 @@ func (x *packetCollectServiceGetPacketInfoStreamClient) Recv() (*PacketInfo, err
 type PacketCollectServiceServer interface {
 	SetPoll(context.Context, *PollSettingRequest) (*PollSettingReply, error)
 	GetPacketInfo(context.Context, *PacketInfoRequest) (*PacketInfoReply, error)
+	GetEbpfProgramInfo(context.Context, *EbpfProgramInfoRequest) (*EbpfProgramInfoReply, error)
 	GetPacketInfoStream(*PacketInfoStreamRequest, PacketCollectService_GetPacketInfoStreamServer) error
 	mustEmbedUnimplementedPacketCollectServiceServer()
 }
@@ -104,6 +115,9 @@ func (UnimplementedPacketCollectServiceServer) SetPoll(context.Context, *PollSet
 }
 func (UnimplementedPacketCollectServiceServer) GetPacketInfo(context.Context, *PacketInfoRequest) (*PacketInfoReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetPacketInfo not implemented")
+}
+func (UnimplementedPacketCollectServiceServer) GetEbpfProgramInfo(context.Context, *EbpfProgramInfoRequest) (*EbpfProgramInfoReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetEbpfProgramInfo not implemented")
 }
 func (UnimplementedPacketCollectServiceServer) GetPacketInfoStream(*PacketInfoStreamRequest, PacketCollectService_GetPacketInfoStreamServer) error {
 	return status.Errorf(codes.Unimplemented, "method GetPacketInfoStream not implemented")
@@ -157,6 +171,24 @@ func _PacketCollectService_GetPacketInfo_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PacketCollectService_GetEbpfProgramInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EbpfProgramInfoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PacketCollectServiceServer).GetEbpfProgramInfo(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/PacketCollectService/GetEbpfProgramInfo",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PacketCollectServiceServer).GetEbpfProgramInfo(ctx, req.(*EbpfProgramInfoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PacketCollectService_GetPacketInfoStream_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(PacketInfoStreamRequest)
 	if err := stream.RecvMsg(m); err != nil {
@@ -193,6 +225,10 @@ var PacketCollectService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "GetPacketInfo",
 			Handler:    _PacketCollectService_GetPacketInfo_Handler,
 		},
+		{
+			MethodName: "GetEbpfProgramInfo",
+			Handler:    _PacketCollectService_GetEbpfProgramInfo_Handler,
+		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
@@ -201,5 +237,5 @@ var PacketCollectService_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "packet_collector.proto",
+	Metadata: "nfagent/api/packet_collector.proto",
 }

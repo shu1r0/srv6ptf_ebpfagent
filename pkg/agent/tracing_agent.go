@@ -26,6 +26,7 @@ type TracingAgent struct {
 	NodeId        uint32
 	diffWallMono  float64
 	AttachOptions *ebpf.AttachAllOptions
+	dpSetting     bool
 }
 
 func NewTracingAgent(ip string, port int) (*TracingAgent, error) {
@@ -53,6 +54,11 @@ func (cp *TracingAgent) Start() {
 
 func (cp *TracingAgent) SetDp(nodeid uint32) {
 	log.Info("Set eBPF program.")
+
+	if cp.dpSetting {
+		log.Warn("eBPF Dataplane already set.")
+	}
+
 	cp.NodeId = nodeid
 	if err := cp.Dp.AttachAll(cp.AttachOptions); err != nil {
 		log.Fatalf("Attach All Error: %s", err)
@@ -66,6 +72,7 @@ func (cp *TracingAgent) SetDp(nodeid uint32) {
 		log.Fatalf("Packet Info Error: %s", err)
 	}
 	cp.InfoChan = pktchan
+	cp.dpSetting = true
 }
 
 func (cp *TracingAgent) Stop() {
@@ -75,48 +82,6 @@ func (cp *TracingAgent) Stop() {
 		log.Fatalf("Dataplane Close Error: %s", err)
 	}
 	cp.Dp.DettachAll()
-}
-
-func (cp *TracingAgent) SetPoll(context.Context, *api.PollSettingRequest) (*api.PollSettingReply, error) {
-	// 仮実装
-	log.Info("Called SetPoll")
-	rep := &api.PollSettingReply{}
-	return rep, nil
-}
-
-func (cp *TracingAgent) GetPacketInfo(context.Context, *api.PacketInfoRequest) (*api.PacketInfoReply, error) {
-	// 仮実装
-	log.Info("Called GetPacketInfo")
-	rep := &api.PacketInfoReply{}
-	return rep, nil
-}
-
-func (cp *TracingAgent) GetPacketInfoStream(req *api.PacketInfoStreamRequest, stream api.PacketCollectService_GetPacketInfoStreamServer) error {
-	log.Info("Called GetPacketInfoStream")
-	var wg sync.WaitGroup
-	wg.Add(1)
-	// TODO: couter_length
-	cp.SetDp(req.NodeId)
-
-	go func() {
-		for {
-			pktinfo := <-cp.InfoChan
-
-			log.Traceln("********** getPacket **********")
-			log.Tracef("Packet : %s\n", hex.EncodeToString(pktinfo.Pkt))
-			log.Tracef("Packet ID : %d\n", pktinfo.PktId)
-			log.Tracef("Timestamp (mono): %b\n", pktinfo.MonotoricTimestamp)
-			log.Tracef("Hook: %d\n", pktinfo.Hookpoint)
-
-			if err := stream.Send(cp.pkti2msg(&pktinfo)); err != nil {
-				wg.Done()
-				log.Errorf("PacketInfor Stream: %s\n", err)
-				break
-			}
-		}
-	}()
-	wg.Wait()
-	return nil
 }
 
 func (cp *TracingAgent) pkti2msg(pkt *ebpf.PacketInfo) *api.PacketInfo {
@@ -153,4 +118,63 @@ func (cp *TracingAgent) pkti2msg(pkt *ebpf.PacketInfo) *api.PacketInfo {
 
 	log.Tracef("PcketInfo gRPC msg: %s", msg.String())
 	return msg
+}
+
+func (cp *TracingAgent) SetPoll(context.Context, *api.PollSettingRequest) (*api.PollSettingReply, error) {
+	// 仮実装
+	log.Info("Called SetPoll")
+	rep := &api.PollSettingReply{}
+	return rep, nil
+}
+
+func (cp *TracingAgent) GetPacketInfo(context.Context, *api.PacketInfoRequest) (*api.PacketInfoReply, error) {
+	// 仮実装
+	log.Info("Called GetPacketInfo")
+	rep := &api.PacketInfoReply{}
+	return rep, nil
+}
+
+func (cp *TracingAgent) GetEbpfProgramInfo(ctx context.Context, request *api.EbpfProgramInfoRequest) (*api.EbpfProgramInfoReply, error) {
+	log.Info("Called GetEbpfProgramInfo")
+	rep := &api.EbpfProgramInfoReply{}
+	rep.Programs = []*api.EbpfProgramInfo{
+		&api.EbpfProgramInfo{Hook: api.EBPFHook_XDP, Fd: uint64(cp.Dp.Ingress.FD())},
+		&api.EbpfProgramInfo{Hook: api.EBPFHook_TC_EGRESS, Fd: uint64(cp.Dp.Egress.FD())},
+		&api.EbpfProgramInfo{Hook: api.EBPFHook_LWT_SEG6LOCAL, Fd: uint64(cp.Dp.EndInsertId.FD())},
+		&api.EbpfProgramInfo{Hook: api.EBPFHook_LWT_XMIT, Fd: uint64(cp.Dp.LwtxmitReadId.FD())},
+		&api.EbpfProgramInfo{Hook: api.EBPFHook_LWT_IN, Fd: uint64(cp.Dp.LwtinReadId.FD())},
+		&api.EbpfProgramInfo{Hook: api.EBPFHook_LWT_OUT, Fd: uint64(cp.Dp.LwtoutReadId.FD())},
+	}
+	return rep, nil
+}
+
+func (cp *TracingAgent) GetPacketInfoStream(req *api.PacketInfoStreamRequest, stream api.PacketCollectService_GetPacketInfoStreamServer) error {
+	log.Info("Called GetPacketInfoStream")
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	if !cp.dpSetting {
+		// TODO: couter_length
+		cp.SetDp(req.NodeId)
+	}
+
+	go func() {
+		for {
+			pktinfo := <-cp.InfoChan
+
+			log.Traceln("********** getPacket **********")
+			log.Tracef("Packet : %s\n", hex.EncodeToString(pktinfo.Pkt))
+			log.Tracef("Packet ID : %d\n", pktinfo.PktId)
+			log.Tracef("Timestamp (mono): %b\n", pktinfo.MonotoricTimestamp)
+			log.Tracef("Hook: %d\n", pktinfo.Hookpoint)
+
+			if err := stream.Send(cp.pkti2msg(&pktinfo)); err != nil {
+				wg.Done()
+				log.Errorf("PacketInfor Stream: %s\n", err)
+				break
+			}
+		}
+	}()
+	wg.Wait()
+	return nil
 }
