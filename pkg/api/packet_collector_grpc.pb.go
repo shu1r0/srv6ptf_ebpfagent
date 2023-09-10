@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.2.0
 // - protoc             v3.12.4
-// source: nfagent/api/packet_collector.proto
+// source: packet_collector.proto
 
 package api
 
@@ -237,5 +237,5 @@ var PacketCollectService_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "nfagent/api/packet_collector.proto",
+	Metadata: "packet_collector.proto",
 }
