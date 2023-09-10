@@ -714,13 +714,16 @@ int end_insert_id(struct __sk_buff *skb)
 
     if (push_pktidtlv_lwt_seg6(skb, *node_id, *counter))
     {
-      data_end = (void *)(long)skb->data_end;
-      data = (void *)(long)skb->data;
-      packet_size = data_end - data;
-      // Perf Event
-      unsigned long long pktid = ((unsigned long long)*node_id << (PKTID_TLV_COUNTER_LEN * 8)) | (unsigned long long)*counter;
-      perf_event(skb, packet_size, pktid, HOOK_LWT_SEG6LOCAL_PUSH);
-      (*counter)++;
+      if (ENABLE_HOOK_LWT_SEG6LOCAL_PUSH)
+      {
+        data_end = (void *)(long)skb->data_end;
+        data = (void *)(long)skb->data;
+        packet_size = data_end - data;
+        // Perf Event
+        unsigned long long pktid = ((unsigned long long)*node_id << (PKTID_TLV_COUNTER_LEN * 8)) | (unsigned long long)*counter;
+        perf_event(skb, packet_size, pktid, HOOK_LWT_SEG6LOCAL_PUSH);
+        (*counter)++;
+      }
     }
     else
     {

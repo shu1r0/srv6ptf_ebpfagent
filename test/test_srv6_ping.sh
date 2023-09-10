@@ -18,6 +18,7 @@ cd -
 ##### Test TC/XDP eBPF Hook #####
 # -- Start network
 sudo ./netns_network_examples/simple/2hosts.sh -c
+ip netns exec ns2 ip -6 route add default dev ns2_veth2 via  2001:db8:20::1
 
 # start agent
 sudo ip netns exec ns2 sudo ../cmd/srv6_tracing_agent/main -log-level trace -log-file ./test_log.log &
@@ -33,6 +34,7 @@ sudo ./netns_network_examples/simple/2hosts.sh -d
 ##### Test EndBPF Hook #####
 # -- Start network
 sudo ./netns_network_examples/simple/2hosts.sh -c
+ip netns exec ns2 ip -6 route add default dev ns2_veth2 via  2001:db8:20::1
 
 sudo ip netns exec ns1 ip -6 route add 2001:db8:10::3/128 dev ns1_veth1 via  2001:db8:10::2
 sudo ip netns exec ns1 ip -6 route add 2001:db8:10::4/128 dev ns1_veth1 via  2001:db8:10::2
@@ -63,6 +65,7 @@ sudo ./netns_network_examples/simple/2hosts.sh -d
 ##### Test Dump frame test #####
 # -- Start network
 sudo ./netns_network_examples/simple/2hosts.sh -c
+ip netns exec ns2 ip -6 route add default dev ns2_veth2 via  2001:db8:20::1
 
 # start agent
 sudo ip netns exec ns2 sudo ../cmd/dumpframe/main -log-level trace -log-file ./test_log.log &
