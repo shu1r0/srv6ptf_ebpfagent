@@ -67,7 +67,7 @@ struct bpf_map_def SEC("maps") counter_map = {
 };
 
 /* ---------------------------------------- *
- * Helpers
+ * SRv6 PktId TLV
  * ---------------------------------------- */
 
 struct sr6_pktid_tlv
@@ -78,7 +78,7 @@ struct sr6_pktid_tlv
   unsigned char counter[PKTID_TLV_COUNTER_LEN];
 };
 
-void convertByteOrder(unsigned char *array, __u64 length)
+static __always_inline void convertByteOrder(unsigned char *array, __u64 length)
 {
   unsigned char temp;
 
@@ -91,7 +91,7 @@ void convertByteOrder(unsigned char *array, __u64 length)
   }
 }
 
-__u64 convertToUint(unsigned char *array, __u64 length)
+static __always_inline __u64 convertToUint(unsigned char *array, __u64 length)
 {
   __u64 converted = 0;
 
@@ -104,7 +104,7 @@ __u64 convertToUint(unsigned char *array, __u64 length)
   return converted;
 }
 
-void convertToByteArray(__u64 value, unsigned char *array, __u64 length)
+static __always_inline void convertToByteArray(__u64 value, unsigned char *array, __u64 length)
 {
 #pragma clang loop unroll(full)
   for (int i = 0; i < length; i++)
@@ -146,6 +146,10 @@ static __always_inline unsigned long long nodeidtoi(struct sr6_pktid_tlv *tlv)
   __builtin_memcpy(&nodeid, nodeid_off, PKTID_TLV_NODEID_LEN);
   return convertToUint(&nodeid, PKTID_TLV_NODEID_LEN);
 }
+
+/* ---------------------------------------- *
+ * Helpers
+ * ---------------------------------------- */
 
 static __always_inline struct ipv6_sr_hdr *get_srh(void *data, void *data_end)
 {
@@ -657,6 +661,7 @@ int egress(struct __sk_buff *skb)
   return TC_ACT_OK;
 }
 
+// End.BPF
 SEC("lwt_seg6local/end_insert_id")
 int end_insert_id(struct __sk_buff *skb)
 {
@@ -709,13 +714,16 @@ int end_insert_id(struct __sk_buff *skb)
 
     if (push_pktidtlv_lwt_seg6(skb, *node_id, *counter))
     {
-      data_end = (void *)(long)skb->data_end;
-      data = (void *)(long)skb->data;
-      packet_size = data_end - data;
-      // Perf Event
-      unsigned long long pktid = ((unsigned long long)*node_id << (PKTID_TLV_COUNTER_LEN * 8)) | (unsigned long long)*counter;
-      perf_event(skb, packet_size, pktid, HOOK_LWT_SEG6LOCAL_PUSH);
-      (*counter)++;
+      if (ENABLE_HOOK_LWT_SEG6LOCAL_PUSH)
+      {
+        data_end = (void *)(long)skb->data_end;
+        data = (void *)(long)skb->data;
+        packet_size = data_end - data;
+        // Perf Event
+        unsigned long long pktid = ((unsigned long long)*node_id << (PKTID_TLV_COUNTER_LEN * 8)) | (unsigned long long)*counter;
+        perf_event(skb, packet_size, pktid, HOOK_LWT_SEG6LOCAL_PUSH);
+        (*counter)++;
+      }
     }
     else
     {

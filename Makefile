@@ -13,7 +13,7 @@ clean:
 
 
 proto:
-	protoc --go_out=. --go-grpc_out=. api/packet_collector.proto
+	protoc --go_out=. --go-grpc_out=. nfagent/api/packet_collector.proto
 
 
 build:
