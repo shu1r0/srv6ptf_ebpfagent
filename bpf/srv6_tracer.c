@@ -282,7 +282,7 @@ static __always_inline struct sr6_pktid_tlv *get_pktidtlv(struct ipv6_sr_hdr *sr
 
 static __always_inline bool update_pkt_len(struct ipv6hdr *ipv6, struct ipv6_sr_hdr *srh, uint16_t size)
 {
-  ipv6->payload_len += htons(size);
+  ipv6->payload_len = htons((uint16_t)(ntohs(ipv6->payload_len) + size));
   srh->hdrlen += size / 8;
   return true;
 }
