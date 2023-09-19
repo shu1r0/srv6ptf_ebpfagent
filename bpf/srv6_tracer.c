@@ -552,25 +552,25 @@ int ingress(struct xdp_md *ctx)
       bpf_warn("Ingress: Node id is not found in Map.");
       return XDP_PASS;
     }
-    __u64 *count = bpf_map_lookup_elem(&counter_map, &counter_index);
+    __u64 *counter = bpf_map_lookup_elem(&counter_map, &counter_index);
 
-    if (count == NULL)
+    if (counter == NULL)
     {
       bpf_warn("Ingress: Counter is not found in Map.");
       return XDP_PASS;
     }
 
-    if (push_pktidtlv_xdp(ctx, *node_id, *count))
+    if (push_pktidtlv_xdp(ctx, *node_id, *counter))
     {
+      // Perf Event
+      unsigned long long pktid = ((unsigned long long)*node_id << (PKTID_TLV_COUNTER_LEN * 8)) | (unsigned long long)*counter;
+      (*counter)++;
       if (ENABLE_HOOK_XDP_INGRESS_PUSH)
       {
         data_end = (void *)(long)ctx->data_end;
         data = (void *)(long)ctx->data;
         packet_size = data_end - data;
-        // Perf Event
-        unsigned long long pktid = ((unsigned long long)*node_id << (PKTID_TLV_COUNTER_LEN * 8)) | (unsigned long long)*count;
         perf_event(ctx, packet_size, pktid, HOOK_XDP_INGRESS_PUSH);
-        (*count)++;
       }
     }
     else
@@ -638,15 +638,15 @@ int egress(struct __sk_buff *skb)
 
     if (push_pktidtlv_skb(skb, *node_id, *counter))
     {
+      // Perf Event
+      unsigned long long pktid = ((unsigned long long)*node_id << (PKTID_TLV_COUNTER_LEN * 8)) | (unsigned long long)*counter;
+      (*counter)++;
       if (ENABLE_HOOK_TC_EGRESS_PUSH)
       {
         data_end = (void *)(long)skb->data_end;
         data = (void *)(long)skb->data;
         packet_size = data_end - data;
-        // Perf Event
-        unsigned long long pktid = ((unsigned long long)*node_id << (PKTID_TLV_COUNTER_LEN * 8)) | (unsigned long long)*counter;
         perf_event(skb, packet_size, pktid, HOOK_TC_EGRESS_PUSH);
-        (*counter)++;
       }
     }
     else
@@ -714,15 +714,15 @@ int end_insert_id(struct __sk_buff *skb)
 
     if (push_pktidtlv_lwt_seg6(skb, *node_id, *counter))
     {
+      unsigned long long pktid = ((unsigned long long)*node_id << (PKTID_TLV_COUNTER_LEN * 8)) | (unsigned long long)*counter;
+      (*counter)++;
       if (ENABLE_HOOK_LWT_SEG6LOCAL_PUSH)
       {
         data_end = (void *)(long)skb->data_end;
         data = (void *)(long)skb->data;
         packet_size = data_end - data;
         // Perf Event
-        unsigned long long pktid = ((unsigned long long)*node_id << (PKTID_TLV_COUNTER_LEN * 8)) | (unsigned long long)*counter;
         perf_event(skb, packet_size, pktid, HOOK_LWT_SEG6LOCAL_PUSH);
-        (*counter)++;
       }
     }
     else

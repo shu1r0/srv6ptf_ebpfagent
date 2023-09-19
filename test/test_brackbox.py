@@ -20,6 +20,9 @@ class TestSPacket(TestCase):
         def notify_packet_handler(data):
             print("***** Received from agent *****")
             print(data)
+            pkt = Ether(data["data"])
+            if IPv6ExtHdrSegmentRoutingTLV in pkt:
+                pkt[IPv6ExtHdrSegmentRoutingTLV].show()
 
         def notify_packetid_handler(data):
             print("***** Received from agent *****")
