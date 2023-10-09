@@ -7,6 +7,7 @@
 *.pcap
 
 main
+!cmd/srv6_tracing_agent/main
 
 *.o
 !tracer_bpfeb.o

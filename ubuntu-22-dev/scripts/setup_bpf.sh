@@ -41,19 +41,19 @@ export PATH=$PATH:/usr/local/go/bin
 # sudo apt-get update -y
 # sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-cd /tmp
-wget https://github.com/ReFirmLabs/binwalk/archive/master.zip
-unzip master.zip
-cd binwalk-master && sudo python3 setup.py uninstall && sudo python3 setup.py install
-
-cd /tmp
-git clone https://git.kernel.org/pub/scm/devel/pahole/pahole.git
-cd pahole
-mkdir build
-cd build
-cmake -D__LIB=lib ..
-sudo make install
-sudo ldconfig
+#cd /tmp
+#wget https://github.com/ReFirmLabs/binwalk/archive/master.zip
+#unzip master.zip
+#cd binwalk-master && sudo python3 setup.py uninstall && sudo python3 setup.py install
+#
+#cd /tmp
+#git clone https://git.kernel.org/pub/scm/devel/pahole/pahole.git
+#cd pahole
+#mkdir build
+#cd build
+#cmake -D__LIB=lib ..
+#sudo make install
+#sudo ldconfig
 
 echo
 echo "---------- Linux Config ----------"
