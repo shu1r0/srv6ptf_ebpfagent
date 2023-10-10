@@ -10,6 +10,10 @@ TRACING_AGENT_DIR="./cmd/srv6_tracing_agent/"
 
 clean:
 	cd ./pkg/ebpf/;rm *.tmp *.o.*;cd -
+
+
+cleanall:
+	$(MAKE) clean
 	rm -rf $(DUMPFRAME_DIR)main
 	rm -rf $(TRACING_AGENT_DIR)grpc_client
 	rm -rf $(TRACING_AGENT_DIR)main
