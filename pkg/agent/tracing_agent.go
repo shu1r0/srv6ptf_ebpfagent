@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 	"net"
+	"strings"
 	"sync"
 
 	"github.com/shu1r0/srv6ptf_ebpfagent/pkg/api"
@@ -15,6 +16,25 @@ import (
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 )
+
+type AgentMode int
+
+const (
+	UnknownMode AgentMode = iota
+	PacketMode
+	PacketIdMode
+)
+
+var StringToAgentMode = map[string]AgentMode{
+	"unknownmode":  UnknownMode,
+	"packetmode":   PacketMode,
+	"packetidmode": PacketIdMode,
+}
+
+func ParseString(m string) AgentMode {
+	m = strings.ToLower(m)
+	return StringToAgentMode[m]
+}
 
 type TracingAgent struct {
 	api.UnimplementedPacketCollectServiceServer
@@ -27,6 +47,7 @@ type TracingAgent struct {
 	diffWallMono  float64
 	AttachOptions *ebpf.AttachAllOptions
 	dpSetting     bool
+	Mode          AgentMode
 }
 
 func NewTracingAgent(ip string, port int) (*TracingAgent, error) {
@@ -36,7 +57,7 @@ func NewTracingAgent(ip string, port int) (*TracingAgent, error) {
 		return nil, fmt.Errorf("Tracking Data Plane Create: %s", err)
 	}
 
-	return &TracingAgent{Server: server, Ip: ip, Port: port, Dp: dp, diffWallMono: utils.GetDiffWallMono(), AttachOptions: nil}, nil
+	return &TracingAgent{Server: server, Ip: ip, Port: port, Dp: dp, diffWallMono: utils.GetDiffWallMono(), AttachOptions: nil, Mode: PacketIdMode}, nil
 }
 
 func (cp *TracingAgent) Start() {
@@ -85,12 +106,13 @@ func (cp *TracingAgent) Stop() {
 }
 
 func (cp *TracingAgent) pkti2msg(pkt *ebpf.PacketInfo) *api.PacketInfo {
-
 	msg := &api.PacketInfo{
 		NodeId:      cp.NodeId,
 		Timestamp:   float64(pkt.MonotoricTimestamp)*math.Pow(10, -10) + cp.diffWallMono,
 		PktidExthdr: api.PktIdExtHdr_EXTHDR_ROUTING,
 	}
+
+	// set metadata
 	if pkt.Hookpoint == 1 || pkt.Hookpoint == 2 {
 		msg.Metadata = &api.PacketInfo_EbpfInfo{EbpfInfo: &api.EBPFInfo{Hookpoint: api.EBPFHook_XDP}}
 		msg.PacketProtocol = api.PacketProtocol_PROTOCOL_ETH
@@ -110,10 +132,19 @@ func (cp *TracingAgent) pkti2msg(pkt *ebpf.PacketInfo) *api.PacketInfo {
 		msg.Metadata = &api.PacketInfo_EbpfInfo{EbpfInfo: &api.EBPFInfo{Hookpoint: api.EBPFHook_LWT_SEG6LOCAL}}
 		msg.PacketProtocol = api.PacketProtocol_PROTOCOL_IPV6
 	}
-	if pkt.Hookpoint%2 == 0 { // push id
+
+	// set packet data
+	if pkt.Hookpoint%2 == 0 {
 		msg.Data = &api.PacketInfo_Packet{Packet: pkt.Pkt}
 	} else { // get id
-		msg.Data = &api.PacketInfo_PacketId{PacketId: uint64(pkt.PktId)}
+		switch cp.Mode {
+		case UnknownMode:
+			log.Fatalln("Unknown agent mode")
+		case PacketMode:
+			msg.Data = &api.PacketInfo_PacketAndId{PacketAndId: &api.PacketAndId{Packet: pkt.Pkt, PacketId: uint64(pkt.PktId)}}
+		case PacketIdMode:
+			msg.Data = &api.PacketInfo_PacketId{PacketId: uint64(pkt.PktId)}
+		}
 	}
 
 	log.Tracef("PcketInfo gRPC msg: %s", msg.String())

@@ -14,6 +14,7 @@ clean:
 
 cleanall:
 	$(MAKE) clean
+	cd ./pkg/ebpf/;rm *.o;cd -
 	rm -rf $(DUMPFRAME_DIR)main
 	rm -rf $(TRACING_AGENT_DIR)grpc_client
 	rm -rf $(TRACING_AGENT_DIR)main

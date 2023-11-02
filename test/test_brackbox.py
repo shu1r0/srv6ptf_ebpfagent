@@ -11,6 +11,7 @@ from srv6_ping.ping import ping1, new_srh_tlv
 class TestSPacket(TestCase):
 
     def setUp(self):
+        """start gRPC client"""
         self.client = PacketCollectorClient(ip="192.168.10.2", port="31000", node_id=1, node_id_length=16,
                                             logger=getLogger(__name__),
                                             counter_length=32,
@@ -41,9 +42,9 @@ class TestSPacket(TestCase):
         
         # Send SRv6 packet
         ping_times = 3
-        print("Send packets ...")
+        print("Send packets ... (Get Timeout)")
         for _ in range(ping_times):
-            result = ping1(dst="2001:db8:20::1", segs=["2001:db8:10::2"], hlim=1, return_pkt=True)
+            result = ping1(dst="2001:db8:20::2", segs=["2001:db8:10::1"], hlim=1, return_pkt=True)
             if result:
                 results.append(result)
         self.assertTrue(len(results) > 0)
@@ -54,7 +55,18 @@ class TestSPacket(TestCase):
                 self.assertTrue(result["sent_pkt"][IPv6].src == result["recv_pkt"][IPv6].dst)
                 self.assertTrue(IPv6ExtHdrSegmentRoutingTLV in result["recv_pkt"])
             # print("Received packets: {}".format(results))
-        print("Send packets: {}, Recieved packets: {}".format(ping_times, len(results)))
+        print("Send packets (Get Timeout): {}, Recieved packets: {}".format(ping_times, len(results)))
+        
+        print("Send packets ... (Get Reply)")
+        for _ in range(ping_times):
+            result = ping1(dst="2001:db8:20::2", segs=["2001:db8:10::1"], hlim=64, return_pkt=True)
+            if result:
+                results.append(result)
+        self.assertTrue(len(results) > 0)
+        if len(results) > 0:
+            for result in results:
+                self.assertEqual("EchoReply", result["msg"])
+        print("Send packets (Get Timeout): {}, Recieved packets: {}".format(ping_times, len(results)))
     
     def test_srv6_pktid_tlv(self):
         results = []
@@ -64,7 +76,7 @@ class TestSPacket(TestCase):
         print("Send packetid")
         tlv = new_srh_tlv(type=124, value='\x00\x01\x00\x00\x00\x01')
         for _ in range(ping_times):
-            result = ping1(dst="2001:db8:20::1", segs=["2001:db8:10::2"], hlim=1, srh_tlvs=[tlv], return_pkt=True)
+            result = ping1(dst="2001:db8:20::2", segs=["2001:db8:10::1"], hlim=1, srh_tlvs=[tlv], return_pkt=True)
             if result:
                 results.append(result)
         self.assertTrue(len(results) > 0)
@@ -77,13 +89,13 @@ class TestSPacket(TestCase):
     def test_large_ping(self):
         results = []
         
-        result = ping1(dst="2001:db8:20::1", segs=["2001:db8:10::2"], hlim=1, return_pkt=True)
+        result = ping1(dst="2001:db8:20::2", segs=["2001:db8:10::1"], hlim=1, return_pkt=True)
         tlv = new_srh_tlv(type=124, value='\x00\x01\x00\x00\x00\x01')
         
         ping_times = 3
         print("Send Large packets ...")
         for _ in range(ping_times):
-            result = ping1(dst="2001:db8:20::1", segs=["2001:db8:10::2"], hlim=1, srh_tlvs=[tlv], return_pkt=True, data_len=800)
+            result = ping1(dst="2001:db8:20::2", segs=["2001:db8:10::1"], hlim=1, srh_tlvs=[tlv], return_pkt=True, data_len=800)
             if result:
                 results.append(result)
         # echo reply
@@ -91,5 +103,6 @@ class TestSPacket(TestCase):
         print("Send packets: {}, Recieved packets: {}".format(ping_times, len(results)))
 
     def tearDown(self):
+        """gRPC Client stop"""
         self.client.close_channel()
         self.client_thread.join(1)
