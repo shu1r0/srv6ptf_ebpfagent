@@ -27,7 +27,7 @@ func main() {
 		eifaces  = flag.String("e-ifaces", "", "Interfaces for TC Egress (default all interfaces)")
 
 		noAttach  = flag.Bool("no-tc-xdp", false, "Not attached to XDP and TC")
-		agentMode = flag.String("mode", "packetmode", "mode to collect packet (packet or packet_id)")
+		agentMode = flag.String("mode", "packetidmode", "mode to collect packet (packetmode or packetidmode)")
 	)
 	flag.Parse()
 

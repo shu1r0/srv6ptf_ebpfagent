@@ -774,6 +774,7 @@ int lwtxmit_read_id(struct __sk_buff *skb)
     bpf_debug("lwtxmit_read: Did not support for add to SRH.");
   }
 
+  // TODO Reroute Without this route
   return BPF_OK;
 }
 

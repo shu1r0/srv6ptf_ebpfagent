@@ -9,17 +9,23 @@ sudo ./netns_network_examples/simple/2hosts_1router.sh -d
 sudo ./setup.sh
 
 cd ..
+make build
 make install
 cd -
 
-# set -e
+set -e
 
 
 ##### Test TC/XDP eBPF Hook #####
 # -- Start network
 sudo ./netns_network_examples/simple/2hosts_1router.sh -c
+
 # start agent
 sudo ip netns exec r1 sudo ../cmd/srv6_tracing_agent/main -log-level trace -log-file ./test_log.log &
+sleep 3
+
+# test ping
+sudo ip netns exec h1 sudo ping -c 3 2001:db8:20::2
 
 # run test
 sudo ip netns exec h1 python3 -m unittest ./test_brackbox.py
@@ -31,41 +37,31 @@ sudo ./netns_network_examples/simple/2hosts_1router.sh -d
 ##### Test EndBPF Hook #####
 # -- Start network
 sudo ./netns_network_examples/simple/2hosts_1router.sh -c
-sudo ip netns exec h2 sudo ping -c 3 2001:db8:20::1
+# for readid
+sudo ip netns exec h2 ip -6 addr add 2001:db8:20::3/48 dev h2_r1
+sudo ip netns exec h2 ip -6 addr add 2001:db8:20::4/48 dev h2_r1
+sudo ip netns exec h2 ip -6 addr add 2001:db8:20::5/48 dev h2_r1
 
 # start agent
 sudo ip netns exec r1 sudo ../cmd/srv6_tracing_agent/main -no-tc-xdp -conf-file ./test_routes.yaml -log-level trace -log-file ./test_log.log &
-# sudo ip netns exec h2 tcpdump -i h2_r1 -w h2_r1.pcap &
-# sudo ip netns exec h2 tcpdump -i lo -w lo.pcap &
-# sudo ip netns exec h2 tcpdump -i h2_veth1 -w h2_veth1.pcap &
+sleep 3
 
-# start client
-sudo ip netns exec h2 ../cmd/srv6_tracing_agent/grpc_client &
-sleep 5
+sudo ip netns exec r1 tcpdump -i r1_h1 -w r1_h1.pcap &
+
+# test ping
+sudo ip netns exec h1 sudo ping -c 3 2001:db8:20::2
+sudo ip netns exec h1 sudo ping -c 3 2001:db8:20::3
+
 # run test
 sudo ip netns exec h1 python3 -m unittest ./test_end_bpf.py
 
 sleep 1
-sudo ip netns exec h2 ip -6 route show
-sudo ip netns exec h2 ip -s link show
+sudo ip netns exec r1 ip -6 route show
+sudo ip netns exec r1 ip -s link show
 # print bpf trace
 # sudo cat /sys/kernel/tracing/trace
 
 sudo ./netns_network_examples/simple/2hosts_1router.sh -d
 # -- Stop network
-
-
-##### Test Dump frame test #####
-# # -- Start network
-# sudo ./netns_network_examples/simple/2hosts_1router.sh -c
-# ip netns exec h2 ip -6 route add default dev h2_r1 via  2001:db8:20::1
-
-# # start agent
-# sudo ip netns exec h2 sudo ../cmd/dumpframe/main -log-level trace -log-file ./test_log.log &
-# # run test
-# sudo ip netns exec h1 python3 -m unittest ./test_brackbox.py
-
-# sudo ./netns_network_examples/simple/2hosts_1router.sh -d
-# # -- Stop network
 
 sudo rm -rf ./srv6_ping/
