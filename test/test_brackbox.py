@@ -12,21 +12,21 @@ class TestSPacket(TestCase):
 
     def setUp(self):
         """start gRPC client"""
-        self.client = PacketCollectorClient(ip="192.168.10.2", port="31000", node_id=1, node_id_length=16,
+        self.client = PacketCollectorClient(ip="192.168.10.1", port="31000", node_id=1, node_id_length=16,
                                             logger=getLogger(__name__),
                                             counter_length=32,
                                             enable_stats=True)
         self.client.establish_channel()
 
         def notify_packet_handler(data):
-            print("***** Received from agent *****")
+            print("***** Received Packet from agent *****")
             print(data)
             pkt = Ether(data["data"])
             if IPv6ExtHdrSegmentRoutingTLV in pkt:
                 pkt[IPv6ExtHdrSegmentRoutingTLV].show()
 
         def notify_packetid_handler(data):
-            print("***** Received from agent *****")
+            print("***** Received PacketId from agent *****")
             print(data)
 
         def client_start():
@@ -39,9 +39,8 @@ class TestSPacket(TestCase):
     
     def test_srv6_ping(self):
         results = []
-        
-        # Send SRv6 packet
         ping_times = 3
+        
         print("Send packets ... (Get Timeout)")
         for _ in range(ping_times):
             result = ping1(dst="2001:db8:20::2", segs=["2001:db8:10::1"], hlim=1, return_pkt=True)
@@ -58,6 +57,7 @@ class TestSPacket(TestCase):
         print("Send packets (Get Timeout): {}, Recieved packets: {}".format(ping_times, len(results)))
         
         print("Send packets ... (Get Reply)")
+        results = []
         for _ in range(ping_times):
             result = ping1(dst="2001:db8:20::2", segs=["2001:db8:10::1"], hlim=64, return_pkt=True)
             if result:
@@ -66,14 +66,13 @@ class TestSPacket(TestCase):
         if len(results) > 0:
             for result in results:
                 self.assertEqual("EchoReply", result["msg"])
-        print("Send packets (Get Timeout): {}, Recieved packets: {}".format(ping_times, len(results)))
+        print("Send packets (Get Reply): {}, Recieved packets: {}".format(ping_times, len(results)))
     
-    def test_srv6_pktid_tlv(self):
+    def test_srv6_ping_pktid_tlv(self):
         results = []
-        
-        # Send SRv6 packet with PktId TLV
         ping_times = 3
-        print("Send packetid")
+        
+        print("Send packetid ... (Get Timeout)")
         tlv = new_srh_tlv(type=124, value='\x00\x01\x00\x00\x00\x01')
         for _ in range(ping_times):
             result = ping1(dst="2001:db8:20::2", segs=["2001:db8:10::1"], hlim=1, srh_tlvs=[tlv], return_pkt=True)
@@ -84,7 +83,19 @@ class TestSPacket(TestCase):
             for result in results:
                 self.assertEqual("TimeExceeded", result["msg"])
                 self.assertTrue(IPv6ExtHdrSegmentRoutingTLV in result["recv_pkt"])
-        print("Send packets: {}, Recieved packets: {}".format(ping_times, len(results)))
+        print("Send packets (Get Timeout): {}, Recieved packets: {}".format(ping_times, len(results)))
+        
+        print("Send packets ... (Get Reply)")
+        results = []
+        for _ in range(ping_times):
+            result = ping1(dst="2001:db8:20::2", segs=["2001:db8:10::1"], hlim=64, srh_tlvs=[tlv], return_pkt=True)
+            if result:
+                results.append(result)
+        self.assertTrue(len(results) > 0)
+        if len(results) > 0:
+            for result in results:
+                self.assertEqual("EchoReply", result["msg"])
+        print("Send packets (Get Reply): {}, Recieved packets: {}".format(ping_times, len(results)))
     
     def test_large_ping(self):
         results = []
