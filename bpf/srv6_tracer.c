@@ -629,7 +629,7 @@ int egress(struct __sk_buff *skb)
       return TC_ACT_OK;
     }
 
-    __u64 *counter = bpf_map_lookup_elem(&config_map, &node_id_index);
+    __u64 *counter = bpf_map_lookup_elem(&counter_map, &counter_index);
     if (counter == NULL)
     {
       bpf_warn("Egress: Counter is not found in Map.");
@@ -705,7 +705,7 @@ int end_insert_id(struct __sk_buff *skb)
       return BPF_OK;
     }
 
-    __u64 *counter = bpf_map_lookup_elem(&config_map, &node_id_index);
+    __u64 *counter = bpf_map_lookup_elem(&counter_map, &counter_index);
     if (counter == NULL)
     {
       bpf_warn("end_insert_id: Counter is not found in Map.");

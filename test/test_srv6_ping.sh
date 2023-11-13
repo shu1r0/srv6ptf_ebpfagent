@@ -20,6 +20,10 @@ set -e
 # -- Start network
 sudo ./netns_network_examples/simple/2hosts_1router.sh -c
 
+# route for TC Egress Hook
+sudo ip netns exec h2 ip -6 addr add 2001:db8:20::100/48 dev h2_r1
+sudo ip netns exec r1 ip -6 route add 2001:db8:20::100/128 encap seg6 mode inline segs 2001:db8:20::2 dev r1_h1
+
 # start agent
 sudo ip netns exec r1 sudo ../cmd/srv6_tracing_agent/main -log-level trace -log-file ./test_log.log &
 sleep 3

@@ -251,18 +251,18 @@ func (obj *TracingDataPlane) AttachSeg6LocalEndInsertId(dst_s string, link strin
 }
 
 func (obj *TracingDataPlane) AttachLWTXmitReadId(dst_s string, link string) error {
-	return obj.AttachLWT(nl.LWT_BPF_XMIT, obj.LwtxmitReadId.FD(), "XMIT.Read.ID", dst_s, link)
+	return obj.AttachLWT(nl.LWT_BPF_XMIT, obj.LwtxmitReadId.FD(), "XMIT.Read.ID", dst_s, link, nil)
 }
 
 func (obj *TracingDataPlane) AttachLWTInReadId(dst_s string, link string) error {
-	return obj.AttachLWT(nl.LWT_BPF_IN, obj.LwtinReadId.FD(), "IN.Read.ID", dst_s, link)
+	return obj.AttachLWT(nl.LWT_BPF_IN, obj.LwtinReadId.FD(), "IN.Read.ID", dst_s, link, nil)
 }
 
 func (obj *TracingDataPlane) AttachLWTOutReadId(dst_s string, link string) error {
-	return obj.AttachLWT(nl.LWT_BPF_OUT, obj.LwtoutReadId.FD(), "OUT.Read.ID", dst_s, link)
+	return obj.AttachLWT(nl.LWT_BPF_OUT, obj.LwtoutReadId.FD(), "OUT.Read.ID", dst_s, link, nil)
 }
 
-func (obj *TracingDataPlane) AttachLWT(flag int, fd int, name string, dst_s string, link string) error {
+func (obj *TracingDataPlane) AttachLWT(flag int, fd int, name string, dst_s string, link string, gw net.IP) error {
 	var flags_end_bpf [nl.SEG6_LOCAL_MAX]bool
 	flags_end_bpf[nl.SEG6_LOCAL_ACTION] = true
 	flags_end_bpf[nl.SEG6_LOCAL_BPF] = true
@@ -279,7 +279,7 @@ func (obj *TracingDataPlane) AttachLWT(flag int, fd int, name string, dst_s stri
 	if err != nil {
 		return fmt.Errorf("link by name error : %s", err)
 	}
-	route := netlink.Route{LinkIndex: oif.Attrs().Index, Dst: dst, Encap: &bpfEncap}
+	route := netlink.Route{LinkIndex: oif.Attrs().Index, Dst: dst, Encap: &bpfEncap, Gw: gw}
 	if err := netlink.RouteAdd(&route); err != nil {
 		return fmt.Errorf("route add error : %s", err)
 	}
