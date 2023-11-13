@@ -67,6 +67,18 @@ class TestSPacket(TestCase):
             for result in results:
                 self.assertEqual("EchoReply", result["msg"])
         print("Send packets (Get Reply): {}, Recieved packets: {}".format(ping_times, len(results)))
+        
+        print("Send packets for Engress Hook ... (Get Reply)")
+        results = []
+        for _ in range(ping_times):
+            result = ping1(dst="2001:db8:20::100", including_srh=False, hlim=64, return_pkt=True)
+            if result:
+                results.append(result)
+        self.assertTrue(len(results) > 0)
+        if len(results) > 0:
+            for result in results:
+                self.assertEqual("EchoReply", result["msg"])
+        print("Send packets (Get Reply): {}, Recieved packets: {}".format(ping_times, len(results)))
     
     def test_srv6_ping_pktid_tlv(self):
         results = []
