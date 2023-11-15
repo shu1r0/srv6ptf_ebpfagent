@@ -2,7 +2,6 @@ package agent
 
 import (
 	"context"
-	"encoding/hex"
 	"fmt"
 	"math"
 	"net"
@@ -194,7 +193,7 @@ func (cp *TracingAgent) GetPacketInfoStream(req *api.PacketInfoStreamRequest, st
 			pktinfo := <-cp.InfoChan
 
 			log.Traceln("********** getPacket **********")
-			log.Tracef("Packet : %s\n", hex.EncodeToString(pktinfo.Pkt))
+			log.Tracef("Packet : %s\n", string(pktinfo.Pkt))
 			log.Tracef("Packet ID : %d\n", pktinfo.PktId)
 			log.Tracef("Timestamp (mono): %b\n", pktinfo.MonotoricTimestamp)
 			log.Tracef("Hook: %d\n", pktinfo.Hookpoint)
