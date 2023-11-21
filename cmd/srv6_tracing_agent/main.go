@@ -40,10 +40,10 @@ func main() {
 	}
 
 	// routes
-	var endInsertId []ebpf.Seg6LocalEndInsertIdRoute = nil
-	var xmitReadId []ebpf.LWTReadIdRoute = nil
-	var inReadId []ebpf.LWTReadIdRoute = nil
-	var outReadId []ebpf.LWTReadIdRoute = nil
+	var endInsertId []ebpf.LWTAttachRoute = nil
+	var xmitReadId []ebpf.LWTAttachRoute = nil
+	var inReadId []ebpf.LWTAttachRoute = nil
+	var outReadId []ebpf.LWTAttachRoute = nil
 
 	// setup route config
 	if *conf != "" {

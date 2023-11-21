@@ -10,10 +10,10 @@ import (
 type Config struct {
 	Routes struct {
 		Add struct {
-			EndInsertId []ebpf.Seg6LocalEndInsertIdRoute `yaml:"end_insert_id"`
-			XmitReadId  []ebpf.LWTReadIdRoute            `yaml:"xmit_read_id"`
-			InReadId    []ebpf.LWTReadIdRoute            `yaml:"in_read_id"`
-			OutReadId   []ebpf.LWTReadIdRoute            `yaml:"out_read_id"`
+			EndInsertId []ebpf.LWTAttachRoute `yaml:"end_insert_id"`
+			XmitReadId  []ebpf.LWTAttachRoute `yaml:"xmit_read_id"`
+			InReadId    []ebpf.LWTAttachRoute `yaml:"in_read_id"`
+			OutReadId   []ebpf.LWTAttachRoute `yaml:"out_read_id"`
 		} `yaml:"add"`
 	} `yaml:"routes"`
 }

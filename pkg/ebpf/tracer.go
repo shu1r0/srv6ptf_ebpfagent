@@ -23,14 +23,31 @@ type PerfEventItem struct {
 	Hookpoint          uint8
 }
 
-type Seg6LocalEndInsertIdRoute struct {
+type LWTAttachRoute struct {
 	Destination string `yaml:"destination"`
 	Link        string `yaml:"link"`
+	Priority    int    `yaml:"priority"`
+	Table       int    `yaml:"table"`
+	MTU         int    `yaml:"mtu"`
+	GW          string `yaml:"gw"`
 }
 
-type LWTReadIdRoute struct {
-	Destination string `yaml:"destination"`
-	Link        string `yaml:"link"`
+func ParseLWTAttachRoute(attach_rou LWTAttachRoute, encap netlink.Encap) (*netlink.Route, error) {
+	_, dst, err := net.ParseCIDR(attach_rou.Destination)
+	if err != nil {
+		return nil, fmt.Errorf("parse cidr error : %s", err)
+	}
+	oif, err := netlink.LinkByName(attach_rou.Link)
+	if err != nil {
+		return nil, fmt.Errorf("link by name error : %s", err)
+	}
+	gw := net.ParseIP(attach_rou.GW)
+	if attach_rou.GW != "" && gw == nil {
+		return nil, fmt.Errorf("parse ip err : %s", err)
+	}
+	route := &netlink.Route{LinkIndex: oif.Attrs().Index, Dst: dst, Table: attach_rou.Table, Priority: attach_rou.Table, MTU: attach_rou.MTU, Encap: encap, Gw: gw}
+
+	return route, nil
 }
 
 var PerfEventItemSize = 17
@@ -41,10 +58,10 @@ type TracingDataPlane struct {
 	EIfaces                []string
 	Efilters               []*netlink.BpfFilter
 	Eqdiscs                []*netlink.GenericQdisc
-	EndIIDRoutesConfig     []Seg6LocalEndInsertIdRoute
-	XmitReadIdRoutesConfig []LWTReadIdRoute
-	InReadIdRoutesConfig   []LWTReadIdRoute
-	OutReadIdRoutesConfig  []LWTReadIdRoute
+	EndIIDRoutesConfig     []LWTAttachRoute
+	XmitReadIdRoutesConfig []LWTAttachRoute
+	InReadIdRoutesConfig   []LWTAttachRoute
+	OutReadIdRoutesConfig  []LWTAttachRoute
 	AddedRoutes            []*netlink.Route
 }
 
@@ -97,25 +114,25 @@ func (obj *TracingDataPlane) AttachAll(options *AttachAllOptions) error {
 	}
 
 	for _, r := range obj.EndIIDRoutesConfig {
-		if err := obj.AttachSeg6LocalEndInsertId(r.Destination, r.Link); err != nil {
+		if err := obj.AttachSeg6LocalEndInsertId(r); err != nil {
 			return err
 		}
 	}
 
 	for _, r := range obj.XmitReadIdRoutesConfig {
-		if err := obj.AttachLWTXmitReadId(r.Destination, r.Link); err != nil {
+		if err := obj.AttachLWTXmitReadId(r); err != nil {
 			return err
 		}
 	}
 
 	for _, r := range obj.InReadIdRoutesConfig {
-		if err := obj.AttachLWTInReadId(r.Destination, r.Link); err != nil {
+		if err := obj.AttachLWTInReadId(r); err != nil {
 			return err
 		}
 	}
 
 	for _, r := range obj.OutReadIdRoutesConfig {
-		if err := obj.AttachLWTOutReadId(r.Destination, r.Link); err != nil {
+		if err := obj.AttachLWTOutReadId(r); err != nil {
 			return err
 		}
 	}
@@ -224,7 +241,7 @@ func (obj *TracingDataPlane) DettachEgresses() error {
 	return nil
 }
 
-func (obj *TracingDataPlane) AttachSeg6LocalEndInsertId(dst_s string, link string) error {
+func (obj *TracingDataPlane) AttachSeg6LocalEndInsertId(attach_rou LWTAttachRoute) error {
 	var flags_end_bpf [nl.SEG6_LOCAL_MAX]bool
 	flags_end_bpf[nl.SEG6_LOCAL_ACTION] = true
 	flags_end_bpf[nl.SEG6_LOCAL_BPF] = true
@@ -233,36 +250,31 @@ func (obj *TracingDataPlane) AttachSeg6LocalEndInsertId(dst_s string, link strin
 		return err
 	}
 
-	_, dst, err := net.ParseCIDR(dst_s)
+	route, err := ParseLWTAttachRoute(attach_rou, &endBpfEncap)
 	if err != nil {
-		return fmt.Errorf("parse cidr error : %s", err)
+		return fmt.Errorf("Route parse error : %s", err)
 	}
-	oif, err := netlink.LinkByName(link)
-	if err != nil {
-		return fmt.Errorf("link by name error : %s", err)
-	}
-	route := netlink.Route{LinkIndex: oif.Attrs().Index, Dst: dst, Encap: &endBpfEncap}
-	if err := netlink.RouteAdd(&route); err != nil {
+	if err := netlink.RouteAdd(route); err != nil {
 		return fmt.Errorf("route add error : %s", err)
 	}
-	obj.AddedRoutes = append(obj.AddedRoutes, &route)
+	obj.AddedRoutes = append(obj.AddedRoutes, route)
 
 	return nil
 }
 
-func (obj *TracingDataPlane) AttachLWTXmitReadId(dst_s string, link string) error {
-	return obj.AttachLWT(nl.LWT_BPF_XMIT, obj.LwtxmitReadId.FD(), "XMIT.Read.ID", dst_s, link, nil)
+func (obj *TracingDataPlane) AttachLWTXmitReadId(attach_rou LWTAttachRoute) error {
+	return obj.AttachLWT(nl.LWT_BPF_XMIT, obj.LwtxmitReadId.FD(), "XMIT.Read.ID", attach_rou)
 }
 
-func (obj *TracingDataPlane) AttachLWTInReadId(dst_s string, link string) error {
-	return obj.AttachLWT(nl.LWT_BPF_IN, obj.LwtinReadId.FD(), "IN.Read.ID", dst_s, link, nil)
+func (obj *TracingDataPlane) AttachLWTInReadId(attach_rou LWTAttachRoute) error {
+	return obj.AttachLWT(nl.LWT_BPF_IN, obj.LwtinReadId.FD(), "IN.Read.ID", attach_rou)
 }
 
-func (obj *TracingDataPlane) AttachLWTOutReadId(dst_s string, link string) error {
-	return obj.AttachLWT(nl.LWT_BPF_OUT, obj.LwtoutReadId.FD(), "OUT.Read.ID", dst_s, link, nil)
+func (obj *TracingDataPlane) AttachLWTOutReadId(attach_rou LWTAttachRoute) error {
+	return obj.AttachLWT(nl.LWT_BPF_OUT, obj.LwtoutReadId.FD(), "OUT.Read.ID", attach_rou)
 }
 
-func (obj *TracingDataPlane) AttachLWT(flag int, fd int, name string, dst_s string, link string, gw net.IP) error {
+func (obj *TracingDataPlane) AttachLWT(flag int, fd int, name string, attach_rou LWTAttachRoute) error {
 	var flags_end_bpf [nl.SEG6_LOCAL_MAX]bool
 	flags_end_bpf[nl.SEG6_LOCAL_ACTION] = true
 	flags_end_bpf[nl.SEG6_LOCAL_BPF] = true
@@ -271,19 +283,14 @@ func (obj *TracingDataPlane) AttachLWT(flag int, fd int, name string, dst_s stri
 		return err
 	}
 
-	_, dst, err := net.ParseCIDR(dst_s)
+	route, err := ParseLWTAttachRoute(attach_rou, &bpfEncap)
 	if err != nil {
-		return fmt.Errorf("parse cidr error : %s", err)
+		return fmt.Errorf("Route parse error : %s", err)
 	}
-	oif, err := netlink.LinkByName(link)
-	if err != nil {
-		return fmt.Errorf("link by name error : %s", err)
-	}
-	route := netlink.Route{LinkIndex: oif.Attrs().Index, Dst: dst, Encap: &bpfEncap, Gw: gw}
-	if err := netlink.RouteAdd(&route); err != nil {
+	if err := netlink.RouteAdd(route); err != nil {
 		return fmt.Errorf("route add error : %s", err)
 	}
-	obj.AddedRoutes = append(obj.AddedRoutes, &route)
+	obj.AddedRoutes = append(obj.AddedRoutes, route)
 
 	return nil
 }
