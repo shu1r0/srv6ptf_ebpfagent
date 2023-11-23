@@ -542,7 +542,7 @@ int ingress(struct xdp_md *ctx)
       }
     }
   }
-  else
+  else if (ENABLE_PUSH_PKTID_XDP)
   {
     // PKTID 付与
     __u64 *node_id = bpf_map_lookup_elem(&config_map, &node_id_index);
@@ -619,7 +619,7 @@ int egress(struct __sk_buff *skb)
       }
     }
   }
-  else
+  else if (ENABLE_PUSH_PKTID_TC_EGRESS)
   {
     // PKTID 付与
     __u64 *node_id = bpf_map_lookup_elem(&config_map, &node_id_index);

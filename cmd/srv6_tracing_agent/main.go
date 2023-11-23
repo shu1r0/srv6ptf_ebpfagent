@@ -26,8 +26,11 @@ func main() {
 		inifaces = flag.String("in-ifaces", "", "Interfaces for XDP (default all interfaces)")
 		eifaces  = flag.String("e-ifaces", "", "Interfaces for TC Egress (default all interfaces)")
 
-		noAttach  = flag.Bool("no-tc-xdp", false, "Not attached to XDP and TC")
-		agentMode = flag.String("mode", "packetidmode", "mode to collect packet (packetmode or packetidmode)")
+		noAttachXDP      = flag.Bool("no-xdp", false, "Not attached to XDP")
+		noAttachTCEgress = flag.Bool("no-tc-egress", false, "Not attached to TC")
+		xdpReadOnly      = flag.Bool("xdp-read-only", false, "")
+		tcEgressReadOnly = flag.Bool("tc-egress-read-only", false, "")
+		agentMode        = flag.String("mode", "packetidmode", "mode to collect packet (packetmode or packetidmode)")
 	)
 	flag.Parse()
 
@@ -58,18 +61,29 @@ func main() {
 	}
 
 	// ebpf interfaces
-	var attachOpt *ebpf.AttachAllOptions = nil
-	if *inifaces != "" || *eifaces != "" {
-		attachOpt = &ebpf.AttachAllOptions{
-			InIfaces: strings.Split(*inifaces, ","),
-			EIfaces:  strings.Split(*eifaces, ","),
-		}
+	attachOpt, err := ebpf.NewAttachAllOptions()
+	if err != nil {
+		log.Fatalf("New Attach All Options Error: {}", err)
 	}
-	if *noAttach {
-		attachOpt = &ebpf.AttachAllOptions{InIfaces: []string{}, EIfaces: []string{}}
+	if *inifaces != "" {
+		attachOpt.InIfaces = strings.Split(*inifaces, ",")
+	}
+	if *eifaces != "" {
+		attachOpt.EIfaces = strings.Split(*eifaces, ",")
+	}
+	attachOpt.NoXDP = *noAttachXDP
+	attachOpt.NoTCEgress = *noAttachTCEgress
+
+	// flags
+	flags := &ebpf.TracerFlags{true, true}
+	if *xdpReadOnly {
+		flags.EnablePushPktIdXDP = false
+	}
+	if *tcEgressReadOnly {
+		flags.EnablePushPktIdTCEgress = false
 	}
 
-	ag, err := agent.NewTracingAgent(*ip, *port)
+	ag, err := agent.NewTracingAgent(*ip, *port, flags)
 	if err != nil {
 		log.Fatalf("New Agent Error: {}", err)
 	}

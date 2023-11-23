@@ -52,6 +52,11 @@ func ParseLWTAttachRoute(attach_rou LWTAttachRoute, encap netlink.Encap) (*netli
 
 var PerfEventItemSize = 17
 
+type TracerFlags struct {
+	EnablePushPktIdXDP      bool
+	EnablePushPktIdTCEgress bool
+}
+
 type TracingDataPlane struct {
 	tracerObjects
 	InIfaces               []string
@@ -63,21 +68,50 @@ type TracingDataPlane struct {
 	InReadIdRoutesConfig   []LWTAttachRoute
 	OutReadIdRoutesConfig  []LWTAttachRoute
 	AddedRoutes            []*netlink.Route
+	TracerFlags            TracerFlags
 }
 
 type AttachAllOptions struct {
-	InIfaces []string
-	EIfaces  []string
+	InIfaces   []string
+	EIfaces    []string
+	NoXDP      bool
+	NoTCEgress bool
 }
 
-func NewTracingDataPlane(options *ebpf.CollectionOptions) (*TracingDataPlane, error) {
-	dp := &TracingDataPlane{}
+func NewAttachAllOptions() (*AttachAllOptions, error) {
+	options := &AttachAllOptions{}
+	links, err := netlink.LinkList()
+	if err != nil {
+		return nil, err
+	}
+	for _, l := range links {
+		iface := l.Attrs().Name
+		options.InIfaces = append(options.InIfaces, iface)
+		options.EIfaces = append(options.EIfaces, iface)
+	}
+	return options, nil
+}
+
+func NewTracingDataPlane(options *ebpf.CollectionOptions, flags *TracerFlags) (*TracingDataPlane, error) {
+	if flags == nil {
+		flags = &TracerFlags{true, true}
+	}
+	dp := &TracingDataPlane{TracerFlags: *flags}
 
 	spec, err := loadTracer()
 	if err != nil {
 		return nil, err
 	}
-	// spec.RewriteConstants
+
+	if _, ok := spec.Maps[".rodata"]; !ok {
+		return nil, fmt.Errorf("could not find .rodata section to set argument\n")
+	}
+	if err := spec.RewriteConstants(map[string]interface{}{"ENABLE_PUSH_PKTID_XDP": flags.EnablePushPktIdXDP}); err != nil {
+		return nil, fmt.Errorf("Rewrite ENABLE_PUSH_PKTID_XDP err: %s", err)
+	}
+	if err := spec.RewriteConstants(map[string]interface{}{"ENABLE_PUSH_PKTID_TC_EGRESS": flags.EnablePushPktIdTCEgress}); err != nil {
+		return nil, fmt.Errorf("Rewrite ENABLE_PUSH_PKTID_TC_EGRESS err: %s", err)
+	}
 
 	if err := spec.LoadAndAssign(dp, options); err != nil {
 		return nil, err
@@ -87,25 +121,21 @@ func NewTracingDataPlane(options *ebpf.CollectionOptions) (*TracingDataPlane, er
 
 func (obj *TracingDataPlane) AttachAll(options *AttachAllOptions) error {
 	if options == nil {
-		links, err := netlink.LinkList()
+		opt, err := NewAttachAllOptions()
+		options = opt
 		if err != nil {
 			return err
 		}
-		for _, l := range links {
-			iface := l.Attrs().Name
-			if err := obj.AttachIngress(iface); err != nil {
-				return err
-			}
-			if err := obj.AttachEgress(iface); err != nil {
-				return err
-			}
-		}
-	} else {
+	}
+
+	if !options.NoXDP {
 		for _, i := range options.InIfaces {
 			if err := obj.AttachIngress(i); err != nil {
 				return err
 			}
 		}
+	}
+	if !options.NoTCEgress {
 		for _, i := range options.EIfaces {
 			if err := obj.AttachEgress(i); err != nil {
 				return err

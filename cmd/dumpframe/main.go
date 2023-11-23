@@ -31,7 +31,7 @@ func main() {
 		}()
 	}
 
-	dp, err := ebpf.NewTracingDataPlane(nil)
+	dp, err := ebpf.NewTracingDataPlane(nil, nil)
 	if err != nil {
 		log.Panicf("Telemetry DP Error: %s", err)
 	}

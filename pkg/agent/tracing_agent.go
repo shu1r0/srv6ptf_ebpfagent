@@ -49,9 +49,9 @@ type TracingAgent struct {
 	Mode          AgentMode
 }
 
-func NewTracingAgent(ip string, port int) (*TracingAgent, error) {
+func NewTracingAgent(ip string, port int, flags *ebpf.TracerFlags) (*TracingAgent, error) {
 	server := grpc.NewServer()
-	dp, err := ebpf.NewTracingDataPlane(nil)
+	dp, err := ebpf.NewTracingDataPlane(nil, flags)
 	if err != nil {
 		return nil, fmt.Errorf("Tracking Data Plane Create: %s", err)
 	}

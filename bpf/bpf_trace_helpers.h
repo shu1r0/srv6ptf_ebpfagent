@@ -27,6 +27,10 @@
 #define ENABLE_HOOK_LWT_SEG6LOCAL_GET true
 #define ENABLE_HOOK_LWT_SEG6LOCAL_PUSH true
 
+//
+static volatile const bool ENABLE_PUSH_PKTID_XDP = true;
+static volatile const bool ENABLE_PUSH_PKTID_TC_EGRESS = true;
+
 #define WARNING
 // #define INFO
 // #define DEBUG
