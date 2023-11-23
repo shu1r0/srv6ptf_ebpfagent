@@ -3,6 +3,10 @@ routes:
     end_insert_id:
       - destination: "2001:db8:30::3/128"
         link: "r1_h1"
+      # - destination: "2001:db8:30::3/128"
+      #   link: "r1_h2"
+      #   table: 200
+      #   gw: "2001:db8:20::100"
     xmit_read_id:
       - destination: "2001:db8:20::3/128"
         link: "r1_h1"
