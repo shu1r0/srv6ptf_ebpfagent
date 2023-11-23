@@ -87,8 +87,8 @@ class TestEndBPF(TestCase):
         self.assertTrue(len(results) > 0)
         if len(results) > 0:
             for result in results:
-                self.assertEqual("EchoReply", result["
-                # TODOmsg"])
+                self.assertEqual("EchoReply", result["msg"])
+            # TODO
             # self.check_lastreq_from_agent_seg6local(results)
         print("Send packets (Get Reply): {}, Recieved packets: {}".format(ping_times, len(results)))
 
@@ -121,8 +121,8 @@ class TestEndBPF(TestCase):
         self.assertTrue(len(results) > 0)
         if len(results) > 0:
             for result in results:
-                self.assertEqual("EchoReply", result["
-                # TODOmsg"])
+                self.assertEqual("EchoReply", result["msg"])
+            # TODO
             # self.check_lastreq_from_agent_seg6local(results)
         print("Send packets (Encap to Endbpf): {}, Recieved packets: {}".format(ping_times, len(results)))
 
