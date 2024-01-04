@@ -2,11 +2,17 @@ package log_utils
 
 import (
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"os"
+	"time"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func SetupLogger(logl string, logf string) *os.File {
+	log.SetFormatter(&log.TextFormatter{
+		FullTimestamp:   true,
+		TimestampFormat: time.RFC3339Nano,
+	})
 	l, e := log.ParseLevel(logl)
 	if e != nil {
 		log.Fatalf("Unkonwn Log Level %s", logl)

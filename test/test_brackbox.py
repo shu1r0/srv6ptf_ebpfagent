@@ -6,7 +6,8 @@ from time import sleep
 
 from nfagent.collector_grpc.collector_client import PacketCollectorClient
 
-from srv6_ping.ping import ping1, new_srh_tlv
+from srv6_ping.ping import ping1
+from srv6_ping.utils import new_srh_tlv
 
 
 class TestSPacket(TestCase):

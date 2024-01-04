@@ -5,7 +5,8 @@ from json import dumps
 
 from nfagent.collector_grpc.collector_client import PacketCollectorClient
 
-from srv6_ping.ping import ping1, new_srh_tlv
+from srv6_ping.ping import ping1
+from srv6_ping.utils import new_srh_tlv
 
 
 def fix_len_for_lwt_seg6local(pkt: IPv6, tlvlen: int) -> Optional[IPv6]:
